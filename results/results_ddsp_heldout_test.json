@@ -1,0 +1,395 @@
+{
+  "fad_encoder": "vggish",
+  "fad_encoder_compliant": true,
+  "fad_aggregation": "object_first_perobject_fad",
+  "levels": {
+    "1": {
+      "object_first_fad_mean": 2.2673607331249905,
+      "object_first_fad_across_object_sd": 0.4242616945456974,
+      "n_objects": 17,
+      "n_seeds": 5
+    },
+    "2": {
+      "object_first_fad_mean": 2.0444151897597886,
+      "object_first_fad_across_object_sd": 0.38312658815809914,
+      "n_objects": 17,
+      "n_seeds": 5
+    },
+    "3": {
+      "object_first_fad_mean": 1.8791399485198947,
+      "object_first_fad_across_object_sd": 0.46321243610070345,
+      "n_objects": 17,
+      "n_seeds": 5
+    },
+    "4": {
+      "object_first_fad_mean": 1.8151809656581,
+      "object_first_fad_across_object_sd": 0.4827831900600342,
+      "n_objects": 17,
+      "n_seeds": 5
+    }
+  },
+  "primary_comparisons": {
+    "2": {
+      "delta_Li_minus_L1_mean": -0.2229455433652014,
+      "ci95": [
+        -0.3112356729500184,
+        -0.13615761590877345
+      ],
+      "cohens_d": -1.1948424769221582,
+      "cliffs_delta": -0.7647058823529411,
+      "p_raw": 0.0,
+      "n_objects_paired": 17,
+      "interpretation": "Li better than L1 (CI excludes 0)",
+      "p_holm": 0.0,
+      "significant_holm_0.05": true,
+      "verdict": "FORCE_HELPS"
+    },
+    "3": {
+      "delta_Li_minus_L1_mean": -0.3882207846050954,
+      "ci95": [
+        -0.4971622579915428,
+        -0.2774505372543676
+      ],
+      "cohens_d": -1.6463110519573703,
+      "cliffs_delta": -1.0,
+      "p_raw": 0.0,
+      "n_objects_paired": 17,
+      "interpretation": "Li better than L1 (CI excludes 0)",
+      "p_holm": 0.0,
+      "significant_holm_0.05": true,
+      "verdict": "FORCE_HELPS"
+    },
+    "4": {
+      "delta_Li_minus_L1_mean": -0.4521797674668902,
+      "ci95": [
+        -0.5852181606605626,
+        -0.31973093052591267
+      ],
+      "cohens_d": -1.585373920484104,
+      "cliffs_delta": -1.0,
+      "p_raw": 0.0,
+      "n_objects_paired": 17,
+      "interpretation": "Li better than L1 (CI excludes 0)",
+      "p_holm": 0.0,
+      "significant_holm_0.05": true,
+      "verdict": "FORCE_HELPS"
+    }
+  },
+  "per_material": {
+    "1": {
+      "Polycarbonate": {
+        "n_objects": 4,
+        "object_first_fad_mean": 2.4412956231362326,
+        "ci95": [
+          2.0159096814317556,
+          2.793782510760855
+        ],
+        "qualitative_only": false
+      },
+      "Wood": {
+        "n_objects": 3,
+        "object_first_fad_mean": 2.1124815054622323,
+        "ci95": [
+          2.0919855679288313,
+          2.128669351615899
+        ],
+        "qualitative_only": false
+      },
+      "Steel": {
+        "n_objects": 3,
+        "object_first_fad_mean": 2.185707483255713,
+        "ci95": [
+          1.8394383073944318,
+          2.823805399937528
+        ],
+        "qualitative_only": false
+      },
+      "Iron": {
+        "n_objects": 1,
+        "object_first_fad_mean": 2.1775505226104883,
+        "qualitative_only": true
+      },
+      "Ceramic": {
+        "n_objects": 3,
+        "object_first_fad_mean": 2.306751442194729,
+        "ci95": [
+          1.4770135877975215,
+          2.750099995361353
+        ],
+        "qualitative_only": false
+      },
+      "Plastic": {
+        "n_objects": 2,
+        "object_first_fad_mean": 2.1513367248295765,
+        "qualitative_only": true
+      },
+      "Glass": {
+        "n_objects": 1,
+        "object_first_fad_mean": 2.48490470557224,
+        "qualitative_only": true
+      }
+    },
+    "2": {
+      "Polycarbonate": {
+        "n_objects": 4,
+        "object_first_fad_mean": 2.156958843206045,
+        "ci95": [
+          1.7585420338717705,
+          2.4709913594058657
+        ],
+        "qualitative_only": false
+      },
+      "Wood": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.991363676852232,
+        "ci95": [
+          1.9571006187729723,
+          2.055331616162595
+        ],
+        "qualitative_only": false
+      },
+      "Steel": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.9341882062434113,
+        "ci95": [
+          1.6577138839619312,
+          2.387508892898117
+        ],
+        "qualitative_only": false
+      },
+      "Iron": {
+        "n_objects": 1,
+        "object_first_fad_mean": 2.160783993837055,
+        "qualitative_only": true
+      },
+      "Ceramic": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.8165593416100705,
+        "ci95": [
+          1.0872798194186206,
+          2.2546958451917773
+        ],
+        "qualitative_only": false
+      },
+      "Plastic": {
+        "n_objects": 2,
+        "object_first_fad_mean": 2.1982136814741993,
+        "qualitative_only": true
+      },
+      "Glass": {
+        "n_objects": 1,
+        "object_first_fad_mean": 2.343677822189636,
+        "qualitative_only": true
+      }
+    },
+    "3": {
+      "Polycarbonate": {
+        "n_objects": 4,
+        "object_first_fad_mean": 2.058725453033009,
+        "ci95": [
+          1.55700852222598,
+          2.3969302679529907
+        ],
+        "qualitative_only": false
+      },
+      "Wood": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.8746954775141085,
+        "ci95": [
+          1.6076285557362084,
+          2.078976956004989
+        ],
+        "qualitative_only": false
+      },
+      "Steel": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.7162352720024963,
+        "ci95": [
+          1.3354446255619223,
+          2.332119139737999
+        ],
+        "qualitative_only": false
+      },
+      "Iron": {
+        "n_objects": 1,
+        "object_first_fad_mean": 1.7269214888282687,
+        "qualitative_only": true
+      },
+      "Ceramic": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.5943107944138337,
+        "ci95": [
+          0.7661565493255246,
+          2.1296770861408305
+        ],
+        "qualitative_only": false
+      },
+      "Plastic": {
+        "n_objects": 2,
+        "object_first_fad_mean": 2.058023689904983,
+        "qualitative_only": true
+      },
+      "Glass": {
+        "n_objects": 1,
+        "object_first_fad_mean": 2.311783812276628,
+        "qualitative_only": true
+      }
+    },
+    "4": {
+      "Polycarbonate": {
+        "n_objects": 4,
+        "object_first_fad_mean": 2.0556187139890705,
+        "ci95": [
+          1.5801982970310378,
+          2.479969179631772
+        ],
+        "qualitative_only": false
+      },
+      "Wood": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.7956774106541762,
+        "ci95": [
+          1.7555744826217652,
+          1.8655781615063134
+        ],
+        "qualitative_only": false
+      },
+      "Steel": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.4259875173516046,
+        "ci95": [
+          0.9840982381419531,
+          1.8624921930777145
+        ],
+        "qualitative_only": false
+      },
+      "Iron": {
+        "n_objects": 1,
+        "object_first_fad_mean": 1.6767920180318345,
+        "qualitative_only": true
+      },
+      "Ceramic": {
+        "n_objects": 3,
+        "object_first_fad_mean": 1.6456369825132702,
+        "ci95": [
+          0.7889128901199568,
+          2.1730853695021466
+        ],
+        "qualitative_only": false
+      },
+      "Plastic": {
+        "n_objects": 2,
+        "object_first_fad_mean": 2.005162182977207,
+        "qualitative_only": true
+      },
+      "Glass": {
+        "n_objects": 1,
+        "object_first_fad_mean": 2.3465794446880146,
+        "qualitative_only": true
+      }
+    }
+  },
+  "secondary": {
+    "1": {
+      "onset_err_ms": {
+        "object_first_mean": 0.4741049500608324
+      },
+      "onset_hit": {
+        "object_first_mean": 0.9917316017316018
+      },
+      "attack_logmel_l1": {
+        "object_first_mean": 2.0014166917737333
+      },
+      "attack_logmel_l1_aligned": {
+        "object_first_mean": 1.9638160648680425
+      },
+      "energy_l1": {
+        "object_first_mean": 1.0980182137829024
+      },
+      "shift_invariance_gap": {
+        "raw_minus_aligned": 0.03760062690569077,
+        "note": "a large positive gap indicates the raw attack score is inflated by misalignment; a small gap indicates the score is robust to alignment."
+      }
+    },
+    "2": {
+      "onset_err_ms": {
+        "object_first_mean": 0.5903422977925573
+      },
+      "onset_hit": {
+        "object_first_mean": 0.9992156862745099
+      },
+      "attack_logmel_l1": {
+        "object_first_mean": 1.9521825550208076
+      },
+      "attack_logmel_l1_aligned": {
+        "object_first_mean": 1.876695679495147
+      },
+      "energy_l1": {
+        "object_first_mean": 1.1537268443836841
+      },
+      "shift_invariance_gap": {
+        "raw_minus_aligned": 0.07548687552566058,
+        "note": "a large positive gap indicates the raw attack score is inflated by misalignment; a small gap indicates the score is robust to alignment."
+      }
+    },
+    "3": {
+      "onset_err_ms": {
+        "object_first_mean": 0.7294017693827382
+      },
+      "onset_hit": {
+        "object_first_mean": 0.9950252100840337
+      },
+      "attack_logmel_l1": {
+        "object_first_mean": 2.1176337797720275
+      },
+      "attack_logmel_l1_aligned": {
+        "object_first_mean": 2.0078762422180017
+      },
+      "energy_l1": {
+        "object_first_mean": 1.3296150879270727
+      },
+      "shift_invariance_gap": {
+        "raw_minus_aligned": 0.10975753755402584,
+        "note": "a large positive gap indicates the raw attack score is inflated by misalignment; a small gap indicates the score is robust to alignment."
+      }
+    },
+    "4": {
+      "onset_err_ms": {
+        "object_first_mean": 0.6064244673210937
+      },
+      "onset_hit": {
+        "object_first_mean": 1.0
+      },
+      "attack_logmel_l1": {
+        "object_first_mean": 2.1738792847515445
+      },
+      "attack_logmel_l1_aligned": {
+        "object_first_mean": 2.0931756246785347
+      },
+      "energy_l1": {
+        "object_first_mean": 1.4934979667693016
+      },
+      "shift_invariance_gap": {
+        "raw_minus_aligned": 0.08070366007300978,
+        "note": "a large positive gap indicates the raw attack score is inflated by misalignment; a small gap indicates the score is robust to alignment."
+      }
+    }
+  },
+  "nn_lower_bound_object_first_fad": 0.9973385449498757,
+  "meta": {
+    "backbone": "ddsp",
+    "split": "heldout",
+    "eval_split": "test",
+    "dev_mode": false,
+    "n_bootstrap": 2000,
+    "onset_tol_ms": 5.0,
+    "attack_win_ms": 10.0,
+    "seeds_per_level": {
+      "1": 5,
+      "2": 5,
+      "3": 5,
+      "4": 5
+    },
+    "encoder_note": "VGGish primary encoder"
+  }
+}

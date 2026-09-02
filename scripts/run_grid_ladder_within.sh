@@ -1,0 +1,36 @@
+#!/bin/bash
+# Fair-descriptor ladder, DDSP x within: 3 extra conditioning variants x 5 seeds
+# = 15 cells. Protocol identical to the main DDSP grid (n_bands=2048, --modal on,
+# epochs=500, batch=16, seeds 42..46) so these cells are directly comparable
+# to the L1-L4 results.
+#   L2'    = ablation 2, feature_set impulse   (scalar = impulse, not peak force)
+#   L3'_A  = ablation 3, feature_set v2A       ([peak, contact_dur, asymmetry])
+#   L3'_AB = ablation 3, feature_set v2AB      (6-dim: v2A + impulse, bounce_count, max_bounce_ratio)
+# Resumable: cells with final_model.pt are skipped. The main-grid L1/L2/L3/L4
+# cells are not touched.
+# Usage (with the training environment active; a GPU is required):
+#   bash scripts/run_grid_ladder_within.sh
+set -u
+cd "$(dirname "$0")/../src"
+python3 -c "import torch" 2>/dev/null || { echo "FATAL: python3 cannot import torch; activate the training environment first."; exit 1; }
+mkdir -p ../logs
+
+run_cell () {
+  local ABL="$1" FS="$2" SEED="$3"
+  local TAG="ablation_${ABL}_within_ddsp_${FS}_s${SEED}"
+  if [ -f "../experiments/${TAG}/final_model.pt" ]; then echo "[skip] $TAG"; return; fi
+  echo "[run ] $TAG  $(date '+%m-%d %H:%M:%S')"
+  python3 -u train.py --backbone ddsp --ablation "$ABL" --split within \
+    --feature_set "$FS" --seed "$SEED" --epochs 500 --batch_size 16 \
+    --n_bands 2048 --modal on --save_dir "../experiments/${TAG}" \
+    > "../logs/${TAG}.log" 2>&1
+  echo "[done] $TAG  $(date '+%m-%d %H:%M:%S')"
+}
+
+echo "Fair-descriptor ladder: DDSP x within (15 cells)  $(date)"
+for SEED in 42 43 44 45 46; do
+  run_cell 2 impulse "$SEED"   # L2'
+  run_cell 3 v2A     "$SEED"   # L3'_A
+  run_cell 3 v2AB    "$SEED"   # L3'_AB
+done
+echo "LADDER WITHIN GRID COMPLETE $(date)"

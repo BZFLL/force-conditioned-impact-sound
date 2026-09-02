@@ -1,0 +1,33 @@
+{
+  "ir_pool_meta": {
+    "fs": 48000,
+    "ir_len": 9600,
+    "max_order": 3,
+    "absorption_range": [
+      0.05,
+      0.4
+    ],
+    "scattering_range": [
+      0.1,
+      0.5
+    ],
+    "room_range": [
+      3.0,
+      8.0
+    ],
+    "margin": 0.5,
+    "min_dist": 0.5,
+    "n_rays": 10000,
+    "seed": 4242,
+    "n_requested": 2000,
+    "n_dropped_degenerate": 0,
+    "convention": "hybrid ISM(order3)+RT; direct tap at t=0, direct gain 1; 200 ms; no -10 dB drop gate (the pretraining pool keeps dense tails; reflection/direct ratio stored as refl_direct_db)",
+    "pra_version": "0.10.1"
+  },
+  "n_train": 2936,
+  "n_val": 304,
+  "n_test": 308,
+  "pretrain_base_seed": 4243,
+  "excitation": "decaying noise burst: tau log-uniform 3-100 ms, one-pole lowpass a~U[0,0.95], peak log-uniform [0.05,0.5] (20 dB), onset at 5 ms; used as BOTH force_waveform and the excitation convolved with a random pool IR",
+  "note": "trained on the synthetic corpus (the excitation above convolved with a random pool IR) in place of ObjectFolder-Real, with the same loss, evaluation and best-model selection as train.py; the synthetic set is redrawn every epoch"
+}

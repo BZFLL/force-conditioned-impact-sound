@@ -1,0 +1,10 @@
+# Training environment (GPU): torch pinned, other packages unpinned.
+# Install: pip install -r requirements_train.txt
+torch==2.12.1
+torchaudio
+numpy
+scipy
+pandas
+soundfile
+pyyaml
+pyroomacoustics==0.10.1   # synthetic IR pool (make_synthetic_ir_pool.py)

@@ -1,0 +1,8 @@
+{
+  "init_from": "experiments/pretrain/pretrain_synthetic/best_model.pt",
+  "ckpt_epoch": 260,
+  "weights_not_loaded": [
+    "obj_embed.weight: ckpt(7, 16) vs model(100, 16)"
+  ],
+  "note": "weights initialised from init_from (epoch ckpt_epoch); force-curve statistics recomputed on the real training split"
+}

@@ -1,0 +1,19 @@
+{
+ "meta": {
+  "status": "white-noise reference; test split",
+  "noise": "Gaussian white noise, 9600 samples, torch seed 0",
+  "encoder": "VGGishEncoder, pretrained weights (peak-norm inside embed)"
+ },
+ "within": {
+  "object_first_fad_mean": 5.603552901773059,
+  "across_object_sd": 1.3759449211813322,
+  "n_objects": 100,
+  "n_clips": 488
+ },
+ "heldout": {
+  "object_first_fad_mean": 4.950339222294715,
+  "across_object_sd": 0.6845866371429923,
+  "n_objects": 17,
+  "n_clips": 308
+ }
+}

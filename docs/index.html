@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Much Impact-Force Detail Does Neural Impact-Sound Generation Use?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#16181d; --ink2:#5b6068; --mut:#8a8f98; --line:#e4e3dd;
+           --bg:#f7f6f2; --card:#ffffff; --acc:#2a5db0; --acc2:#e8eef8;
+           --band:#1b2233; --bandink:#eef1f7; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:0; background:var(--bg); color:var(--ink);
+         font:16px/1.65 Inter,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; }
+  header.band { background:var(--band); color:var(--bandink);
+                 padding:56px 20px 30px; }
+  .bandin { max-width:860px; margin:0 auto; }
+  h1 { font-family:"Source Serif 4",Georgia,serif; font-weight:700;
+        font-size:2.05em; line-height:1.22; margin:0 0 .45em; letter-spacing:.1px; }
+  .by { color:#dfe4ee; margin:0 0 .5em; font-size:1em; }
+  .sub { color:#aeb6c6; margin:0 0 1.4em; font-size:.98em; max-width:46em; }
+  nav { display:flex; flex-wrap:wrap; gap:8px; }
+  nav a { color:var(--bandink); text-decoration:none; font-size:.82em;
+           padding:.28em .8em; border:1px solid #3a4358; border-radius:99px; }
+  nav a:hover { background:#2a3349; }
+  main { max-width:860px; margin:0 auto; padding:10px 20px 90px; }
+  h2 { font-family:"Source Serif 4",Georgia,serif; font-weight:600;
+        font-size:1.35em; margin:2.6em 0 .7em; }
+  h2 .n { display:inline-block; min-width:1.5em; text-align:center;
+           background:var(--acc); color:#fff; border-radius:6px;
+           font:600 .62em/1.9 Inter,sans-serif; vertical-align:.25em;
+           margin-right:.55em; padding:0 .3em; }
+  .tldr { background:var(--card); border:1px solid var(--line);
+           border-left:4px solid var(--acc); border-radius:8px;
+           padding:1em 1.2em; margin:1.6em 0; box-shadow:0 1px 3px rgba(20,24,35,.05); }
+  table { border-collapse:collapse; margin:1.1em 0; font-size:.9em; width:100%;
+           display:block; overflow-x:auto; background:var(--card);
+           border:1px solid var(--line); border-radius:8px;
+           font-variant-numeric:tabular-nums; }
+  th,td { border-bottom:1px solid var(--line); padding:.42em .7em;
+           text-align:center; white-space:nowrap; }
+  tr:last-child td { border-bottom:none; }
+  th { background:#f1f0ea; font-weight:600; font-size:.94em; }
+  tbody tr:nth-child(even) td, table tr:nth-child(even) td { background:#fbfaf7; }
+  td.l, th.l { text-align:left; }
+  td.neg { color:#166b30; } td.pos { color:#a83232; } td.na { color:var(--mut); }
+  figure { margin:1.4em 0; background:var(--card); border:1px solid var(--line);
+            border-radius:10px; padding:14px 14px 10px;
+            box-shadow:0 1px 3px rgba(20,24,35,.05); }
+  img { max-width:100%; height:auto; display:block; border-radius:4px; }
+  figcaption { font-size:.88em; color:var(--ink2); margin:.7em .2em .2em; }
+  .note { font-size:.88em; color:var(--ink2); }
+  ul { padding-left:1.3em; } li { margin:.35em 0; }
+  audio { width:150px; height:30px; }
+  table.audio th, table.audio td { font-size:.95em; }
+  .foot { font-size:.78em; color:var(--mut); border-top:1px solid var(--line);
+           padding-top:1.2em; margin-top:3em; }
+  code { background:#efeee8; padding:.05em .35em; border-radius:4px; font-size:.88em; }
+  b { font-weight:600; }
+</style>
+</head>
+<body>
+<header class="band"><div class="bandin">
+<h1>How Much Impact-Force Detail Does Neural Impact-Sound Generation&nbsp;Use?</h1>
+<p class="by">Lianganzi Wang, Irán Román, Joshua D. Reiss, Anna Xambó Sedó</p>
+<p class="sub">Companion page — full matrices, control-experiment construction,
+training details and audio examples.</p>
+<nav>
+<a href="#main">Main measurement</a> <a href="#protocol">Protocol</a>
+<a href="#robust">Robustness</a> <a href="#controls">Descriptor controls</a>
+<a href="#refs">Reference systems</a> <a href="#training">Training improvements</a>
+<a href="#encoders">Encoder robustness</a> <a href="#signal">Signal metrics</a>
+<a href="#audio">Audio</a> <a href="#code">Code and data</a>
+</nav>
+</div></header>
+<main>
+
+<div class="tldr"><b>TL;DR.</b> On 100 real objects with synchronously measured
+impact force (3,548 strikes), we condition a DDSP (differentiable digital
+signal processing) generator and a mel-spectrogram conditional variational
+autoencoder (CVAE) on four nested levels of force detail — identity only
+(L1), + peak-force scalar (L2), + 6-D descriptor (L3), + time-resolved force
+frames (L4). Only the full force time course (L4) beats the identity baseline
+in every architecture × familiarity combination. Coarse summaries help only
+in specific settings: every level on unseen objects for the DDSP generator
+(no detected gain on seen objects), and only the descriptor on seen objects
+for the CVAE (the scalar is significantly worse).</div>
+
+<h2 id="main">1&nbsp;· Main measurement (test set)</h2>
+<figure>
+<img src="img/fig_ladder_main.png" alt="Change in FAD vs identity-only baseline across force-granularity levels">
+<figcaption><b>Figure A.</b> Change in object-level Fréchet Audio Distance
+(FAD; VGGish embeddings) relative to the
+identity-only baseline (L1) on the test set; seen objects left, unseen objects
+right. Circles: DDSP; squares: CVAE; error bars: 95% bootstrap confidence
+intervals of the paired per-object difference (negative = better). An interval
+excluding the dashed zero line corresponds to a significance mark in the table
+below.</figcaption>
+</figure>
+<table style="text-align:center">
+  <tr><th rowspan=2 style="text-align:left">Force conditioning</th>
+      <th colspan=2>Seen objects (within)</th>
+      <th colspan=2>Unseen objects (held-out)</th></tr>
+  <tr><th>DDSP</th><th>CVAE</th><th>DDSP</th><th>CVAE</th></tr>
+  <tr><td style="text-align:left">L1 identity only</td><td>1.58 &plusmn; 0.76</td><td>3.26 &plusmn; 0.78</td><td>2.27 &plusmn; 0.42</td><td>3.28 &plusmn; 0.48</td></tr>
+  <tr><td style="text-align:left">L2 + peak-force scalar</td><td>1.55 &plusmn; 0.78</td><td>3.53 &plusmn; 0.93&dagger;</td><td>2.04 &plusmn; 0.38*</td><td>3.14 &plusmn; 0.46</td></tr>
+  <tr><td style="text-align:left">L3 + 6-D force descriptor</td><td>1.60 &plusmn; 0.83</td><td>3.07 &plusmn; 0.75*</td><td>1.88 &plusmn; 0.46*</td><td>3.34 &plusmn; 0.55</td></tr>
+  <tr><td style="text-align:left">L4 + time-resolved force frames</td><td><b>1.40 &plusmn; 0.70*</b></td><td><b>2.89 &plusmn; 0.71*</b></td><td><b>1.82 &plusmn; 0.48*</b></td><td><b>3.02 &plusmn; 0.38*</b></td></tr>
+</table>
+<p class="note">Object-level FAD (VGGish), mean ± s.d. across objects; lower is
+better; best per column in bold. *: significantly better than L1; †:
+significantly worse (paired bootstrap over objects, Holm-corrected).
+L1 = 16-D identity embedding: per-object on the seen split, per-material on
+the unseen split. For the CVAE on seen objects, coarse force information can hurt when identity already carries it.</p>
+
+<h2 id="protocol">2&nbsp;· Statistical protocol and design resolution</h2>
+<p>Comparisons use paired bootstrap over objects (2,000 resamples) with Holm
+correction; objects, not clips, are the resampling unit. The primary metric is
+object-level FAD (VGGish embeddings).</p>
+<p>The design's <b>minimum detectable effect is ≈6–11%</b> of baseline FAD,
+estimated from the noise between five identically configured baseline runs
+(split-half comparisons of runs that differ only in random initialisation give
+a null-effect noise level; the detection threshold follows from it): the
+range spans single-run and pooled estimates, with the pooled point at ≈7% of
+baseline FAD at 70% power. On the
+DDSP generator, seen-object summary effects are at most ≈2% of baseline —
+below this resolution — so these nulls indicate no detected gain, not absence
+of effect. The CVAE's seen-object summary effects lie at or above this resolution: a
+moderate gain for the descriptor and a significant degradation for the
+scalar — plausibly a finite-data effect, since identity already carries the
+information and, with about 26 training strikes per object, there may be too little data to reliably discount the one-dimensional input.</p>
+
+<h2 id="robust">3&nbsp;· Robustness of the main comparison</h2>
+<p><b>Second encoder.</b> The DDSP L4−L1 comparison replicates under CLAP
+embeddings: seen d = −0.30, unseen d = −1.53 (d = Cohen's d of the paired
+per-object difference), both intervals excluding zero.</p>
+<p><b>Force-shuffle control (validation split).</b> Feeding the trained L4 model
+shuffled (mismatched) force windows at evaluation degrades FAD in every run:
+aggregate Δ = +0.050, 95% CI [+0.028, +0.071], d = 0.47, 68% of objects worse;
+the criterion is the paired 95% interval excluding zero.</p>
+<table>
+<tr><th class="l">Model run</th><th>FAD, correct force</th>
+<th>FAD, shuffled force</th><th>Δ (shuffled − correct)</th></tr>
+<tr><td class='l'>run 1</td><td>1.525</td><td>1.545</td><td>+0.020</td></tr>
+<tr><td class='l'>run 2</td><td>1.422</td><td>1.480</td><td>+0.058</td></tr>
+<tr><td class='l'>run 3</td><td>1.574</td><td>1.616</td><td>+0.043</td></tr>
+<tr><td class='l'>run 4</td><td>1.199</td><td>1.273</td><td>+0.074</td></tr>
+<tr><td class='l'>run 5</td><td>1.141</td><td>1.194</td><td>+0.053</td></tr>
+</table>
+
+<h2 id="controls">4&nbsp;· Descriptor controls: construction and results</h2>
+<p>The seen-object null for coarse summaries (DDSP) survives three alternative
+extractions, so it is not an artefact of descriptor choice:</p>
+<ul>
+<li><b>Corrected re-extraction.</b> Two of the original six dimensions are
+physically unreliable on this data — contact often lasts under a millisecond,
+so the pulse width collapses onto the 48&nbsp;kHz sampling grid for roughly half
+the strikes, and the decay-constant fit is degenerate for ≈9% of strikes.
+Descriptors re-extracted with corrected definitions reproduce the null.</li>
+<li><b>Budget-matched alternatives.</b> Alternative six-number summaries under
+the same dimensionality, scaling and training-split statistics also reproduce
+it.</li>
+<li><b>PCA-6 summary.</b> A six-dimensional linear projection fitted on training
+force windows only — the variance-optimal six-number summary. The force frames
+beat even this summary: d = −0.99 (Δ = −0.30; VGGish, seen objects, DDSP, test set).</li>
+</ul>
+<p><b>Information view.</b> Predicting the
+actual L4 input (300 frames × 2 channels) from each summary, fitted on training
+strikes and scored on validation: amplitude is recoverable (R² 0.75–0.84);
+temporal shape only partially (0.20–0.62 linear), and least by the summaries
+used in L2/L3 (0.20 and 0.39).</p>
+<table>
+<tr><th class="l">Summary</th><th>R² raw curve (linear)</th>
+<th>R² temporal shape (linear)</th><th>R² temporal shape (quadratic)</th></tr>
+<tr><td class='l'>Peak scalar (1-D)</td><td>0.75</td><td>0.20</td><td>0.30</td></tr>
+<tr><td class='l'>Original 6-D descriptor</td><td>0.77</td><td>0.39</td><td>0.52</td></tr>
+<tr><td class='l'>Corrected core set (3-D: peak, contact duration, asymmetry)</td><td>0.77</td><td>0.53</td><td>0.59</td></tr>
+<tr><td class='l'>Corrected 6-D descriptor</td><td>0.84</td><td>0.62</td><td>0.72</td></tr>
+</table>
+<p><b>How much of each descriptor dimension identity already carries</b>
+(share of variance explained by per-object identity; training strikes, seen split):</p>
+<table>
+<tr><th class="l">Descriptor dimension</th><th>R² from identity</th></tr>
+<tr><td class='l'>Peak force</td><td>0.62</td></tr>
+<tr><td class='l'>Pulse width (FWHM)</td><td>0.13</td></tr>
+<tr><td class='l'>Bounce count</td><td>0.51</td></tr>
+<tr><td class='l'>Max bounce ratio</td><td>0.55</td></tr>
+<tr><td class='l'>Decay constant</td><td>0.29</td></tr>
+<tr><td class='l'>Asymmetry</td><td>0.67</td></tr>
+</table>
+<p class="note">Pulse width
+(0.13) and decay (0.29) are the dimensions least explained by identity. Both analyses
+use force inputs only — no model outputs, no test data.</p>
+
+<h2 id="refs">5&nbsp;· Reference systems (validation split)</h2>
+<figure>
+<img src="img/fig_reference_systems.png" alt="FAD of all systems on both validation splits">
+<figcaption><b>Figure B.</b> FAD of every system on the two validation splits
+(lower is better). Bars = mean over the three seed-matched runs; open circles =
+individual runs; retrieval, modal synthesis and the white-noise reference are
+deterministic given their inputs.</figcaption>
+</figure>
+<table><tr><th>System</th><th>Seen objects (within)</th><th>Unseen objects (held-out)</th></tr><tr><td>White-noise reference</td><td>5.60</td><td>4.95</td></tr><tr><td>Modal synthesis (SAMPLE)</td><td>2.13</td><td>1.96</td></tr><tr><td>Retrieval (closest-force training recording)</td><td>1.24</td><td>0.96</td></tr><tr><td>DDSP (L4)</td><td>1.51</td><td>1.79</td></tr><tr><td>  + envelope loss</td><td>—</td><td>1.65</td></tr><tr><td>  + synthetic-IR pretraining</td><td>1.18</td><td>1.36</td></tr></table>
+<p class="note">All learned systems conditioned on L4. Retrieval returns the
+training recording with the closest impact force; on unseen objects it can only
+return other objects' recordings, so its low FAD partly reflects the advantage
+of emitting real recordings — a reference floor, not a viable system. The modal
+baseline is built on the open-source SAMPLE package with the same information
+budget as the learned models (recordings + measured force; no geometry).
+Section 1 reports the test set; this section reports the validation split,
+with one exception: the white-noise reference is a test-set value. The learned
+rows are the mean over seeds 42–44. "—" marks a split on which a variant was
+not trained: the envelope-loss variant was trained on the held-out split
+only — it targets the ringing artefact on unseen objects, where the
+generated decay tail comes out as sustained broadband noise instead of the
+recording's tonal modal decay (Sec.&nbsp;9, Figure&nbsp;C, unseen row).</p>
+
+<h2 id="training">6&nbsp;· Training improvements (DDSP; validation, three runs per cell)</h2>
+<p><b>Envelope loss.</b> The multi-resolution STFT loss is nearly blind to decay
+shape: disabling the modal branch changes the training loss by only ≈1% while
+the ringing artefact persists. Adding an envelope-L1 term (weight 8.8, chosen from a validation-split sweep) improves
+FAD by 7.2–8.5% at a 6.7% training-loss cost and moves tail energy toward the
+real value (tail-energy index — mean RMS envelope over the 100–200&nbsp;ms tail
+of the 200&nbsp;ms window, divided by the envelope peak — 0.09 → 0.10; real
+recordings 0.12).</p>
+<p><b>Synthetic-impulse-response pretraining.</b> Pretraining on a fully
+synthetic corpus — random decaying noise bursts convolved with 2,000 simulated
+room impulse responses, the burst doubling as the force input — then
+fine-tuning on real data improves FAD by 19–24% (seen) and 17–28% (unseen), the
+largest gain in this study. The pretrained model without fine-tuning is far worse
+than every baseline (FAD 4.20): the gain is the synthetic prior plus brief
+fine-tuning.</p>
+
+<h2 id="encoders">7&nbsp;· Encoder robustness of the pretraining comparison (validation)</h2>
+<p>Does the improvement from synthetic pretraining (Section 6) survive a change
+of encoder and of distance? Each cell is the per-run change in distribution
+distance between the pretrained + fine-tuned model and the no-pretraining
+model trained with the same random seed (negative = improvement). The same
+comparison is shown under two aggregations: <b>Table 7a</b> uses the paper's
+object-level aggregation; <b>Table 7b</b> uses the set-level aggregation,
+which is the standard definition of FAD in the literature.</p>
+<p class="note">Green = distance decreased after pretraining (improvement);
+red = increased (worse).
+Runs 1–3 are three trainings that differ only in random initialisation.</p>
+<p><b>How each cell is computed.</b> Each validation clip is embedded once —
+VGGish and CLAP with the paper's own pipeline, PANNs, PaSST, EnCodec and
+OpenL3 with the <a href="https://github.com/YoonjinXD/kadtk">kadtk</a>
+toolchain — and generated is compared with real under two distances (Fréchet,
+and the kernel distance KAD) and two aggregations: <i>object-level</i>, the
+distance per object between its generated and its own real clips, averaged
+over objects as in the paper; <i>set-level</i>, one distance over all clips of
+the split, kadtk's convention. The cell shows the percentage change from
+pretraining; a row counts as robust when all three runs are negative.</p>
+<p><b>Why the percentages differ between the two tables.</b> With 4–10 (seen)
+or 15–25 (unseen) clips per object, each per-object distance contains a
+small-sample floor that neither model can remove. Measured on real recordings
+against themselves (two random halves of each object's real clips, VGGish
+features as in the paper), that floor is ≈27% of the no-pretraining score at
+object level versus ≈8% at set level (unseen objects, run 1;
+a small-sample floor diagnostic). The floor dilutes
+object-level percentages, so the same improvement reads smaller at object
+level. Compare sizes within a table, not across the two tables; directions
+are comparable everywhere.</p>
+<p class="note">The tables use the paper's VGGish feature space. For seen
+objects with the two high-dimensional encoders (PANNs 2048-d, PaSST 1295-d;
+488 clips, fewer than the embedding dimension) the set-level Fréchet values
+are numerically unstable; directions and the kernel distance are
+unaffected.</p>
+
+<p><b>Table 7a — object-level aggregation (as in the paper).</b></p>
+<table>
+<tr><th class="l" rowspan="2">Encoder</th><th class="l" rowspan="2">Distance</th>
+<th colspan="3">Seen objects (within)</th><th colspan="3">Unseen objects (held-out)</th></tr>
+<tr><th>run 1</th><th>run 2</th><th>run 3</th><th>run 1</th><th>run 2</th><th>run 3</th></tr>
+<tr><td class='l'>VGGish (paper's own pipeline)</td><td class='l'>Fréchet</td><td class='neg'>-19.3%</td><td class='neg'>-21.3%</td><td class='neg'>-24.1%</td><td class='neg'>-28.1%</td><td class='neg'>-26.8%</td><td class='neg'>-16.7%</td></tr>
+<tr><td class='l'>CLAP (paper's own pipeline)</td><td class='l'>Fréchet</td><td class='neg'>-22.9%</td><td class='neg'>-34.9%</td><td class='neg'>-46.4%</td><td class='neg'>-37.2%</td><td class='neg'>-49.1%</td><td class='neg'>-45.2%</td></tr>
+<tr><td class='l'>PANNs (Wavegram-LogMel) — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='neg'>-28.0%</td><td class='neg'>-35.9%</td><td class='neg'>-39.0%</td><td class='neg'>-31.8%</td><td class='neg'>-43.9%</td><td class='neg'>-43.1%</td></tr>
+<tr><td class='l'>PANNs (Wavegram-LogMel) — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='neg'>-37.5%</td><td class='neg'>-45.2%</td><td class='neg'>-46.6%</td><td class='neg'>-34.7%</td><td class='neg'>-43.6%</td><td class='neg'>-39.2%</td></tr>
+<tr><td class='l'>PaSST — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='neg'>-7.3%</td><td class='neg'>-23.0%</td><td class='neg'>-39.8%</td><td class='neg'>-17.6%</td><td class='neg'>-44.1%</td><td class='neg'>-30.2%</td></tr>
+<tr><td class='l'>PaSST — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='neg'>-11.8%</td><td class='neg'>-34.7%</td><td class='neg'>-51.1%</td><td class='neg'>-16.9%</td><td class='neg'>-43.4%</td><td class='neg'>-28.2%</td></tr>
+<tr><td class='l'>EnCodec — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='neg'>-7.4%</td><td class='pos'>+3.9%</td><td class='neg'>-23.4%</td><td class='neg'>-6.4%</td><td class='neg'>-24.9%</td><td class='neg'>-9.5%</td></tr>
+<tr><td class='l'>EnCodec — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='neg'>-11.1%</td><td class='neg'>-18.6%</td><td class='neg'>-42.7%</td><td class='neg'>-4.3%</td><td class='neg'>-17.3%</td><td class='neg'>-12.6%</td></tr>
+<tr><td class='l'>OpenL3 — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='pos'>+2.3%</td><td>0.0%</td><td class='neg'>-3.8%</td><td class='neg'>-18.7%</td><td class='neg'>-13.3%</td><td class='neg'>-12.0%</td></tr>
+<tr><td class='l'>OpenL3 — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='pos'>+5.2%</td><td class='pos'>+2.9%</td><td class='neg'>-7.1%</td><td class='neg'>-20.7%</td><td class='neg'>-16.6%</td><td class='neg'>-9.2%</td></tr>
+</table>
+
+<p><b>Table 7b — set-level aggregation (literature standard).</b></p>
+<table>
+<tr><th class="l" rowspan="2">Encoder</th><th class="l" rowspan="2">Distance</th>
+<th colspan="3">Seen objects (within)</th><th colspan="3">Unseen objects (held-out)</th></tr>
+<tr><th>run 1</th><th>run 2</th><th>run 3</th><th>run 1</th><th>run 2</th><th>run 3</th></tr>
+<tr><td class='l'>PANNs (Wavegram-LogMel)</td><td class='l'>Fréchet</td><td class='neg'>-42.5%</td><td class='neg'>-60.0%</td><td class='neg'>-61.5%</td><td class='neg'>-64.4%</td><td class='neg'>-75.8%</td><td class='neg'>-76.8%</td></tr>
+<tr><td class='l'>PANNs (Wavegram-LogMel)</td><td class='l'>kernel (KAD)</td><td class='neg'>-66.6%</td><td class='neg'>-72.9%</td><td class='neg'>-69.1%</td><td class='neg'>-63.7%</td><td class='neg'>-74.0%</td><td class='neg'>-73.5%</td></tr>
+<tr><td class='l'>PaSST</td><td class='l'>Fréchet</td><td class='pos'>+3.9%</td><td class='neg'>-38.0%</td><td class='neg'>-51.7%</td><td class='neg'>-30.1%</td><td class='neg'>-58.0%</td><td class='neg'>-40.2%</td></tr>
+<tr><td class='l'>PaSST</td><td class='l'>kernel (KAD)</td><td class='pos'>+4.3%</td><td class='neg'>-43.7%</td><td class='neg'>-51.0%</td><td class='neg'>-33.4%</td><td class='neg'>-59.6%</td><td class='neg'>-35.2%</td></tr>
+<tr><td class='l'>EnCodec</td><td class='l'>Fréchet</td><td class='neg'>-31.9%</td><td class='neg'>-8.4%</td><td class='neg'>-46.8%</td><td class='neg'>-41.0%</td><td class='neg'>-58.9%</td><td class='neg'>-56.8%</td></tr>
+<tr><td class='l'>EnCodec</td><td class='l'>kernel (KAD)</td><td class='neg'>-86.3%</td><td class='neg'>-67.8%</td><td class='neg'>-88.8%</td><td class='neg'>-19.9%</td><td class='neg'>-69.7%</td><td class='neg'>-38.0%</td></tr>
+<tr><td class='l'>OpenL3</td><td class='l'>Fréchet</td><td class='pos'>+3.7%</td><td class='neg'>-0.1%</td><td class='neg'>-7.6%</td><td class='neg'>-27.2%</td><td class='neg'>-20.9%</td><td class='neg'>-14.7%</td></tr>
+<tr><td class='l'>OpenL3</td><td class='l'>kernel (KAD)</td><td class='pos'>+34.2%</td><td class='pos'>+22.7%</td><td class='pos'>+14.1%</td><td class='neg'>-28.8%</td><td class='neg'>-30.0%</td><td class='neg'>-0.7%</td></tr>
+</table>
+
+<p><b>Where the two aggregations disagree on whether a row is robust.</b></p>
+<ul>
+<li>PaSST, seen objects, Fréchet distance: object-level all three runs improve (-7%/-23%/-40%); set-level not all runs improve (+4%/-38%/-52%).</li>
+<li>PaSST, seen objects, kernel distance: object-level all three runs improve (-12%/-35%/-51%); set-level not all runs improve (+4%/-44%/-51%).</li>
+<li>EnCodec, seen objects, Fréchet distance: object-level not all runs improve (-7%/+4%/-23%); set-level all three runs improve (-32%/-8%/-47%). Under the kernel distance all runs improve at both levels.</li>
+</ul>
+<p class="note">In the other 13 of 16 toolchain cells (encoder × split × distance) the robust / not-robust outcome is the same under both aggregations. On unseen objects every toolchain cell is
+robust under both aggregations; the disagreements are all on seen objects,
+where the improvement is smaller.</p>
+<p><b>Caveats.</b></p>
+<ul>
+<li>OpenL3, seen objects: no robust improvement under either aggregation —
+the kernel distance is reversed at set level in all runs and in two of three
+runs at object level; the Fréchet distance is mixed under both.</li>
+<li>OpenL3, unseen objects, kernel distance: at set level one run improves
+only marginally (−0.7%); at object level the same run improves by ≈9%.</li>
+</ul>
+<p><b>Excluded.</b></p>
+<ul>
+<li>PANNs (CNN14): near-degenerate embeddings for 200&nbsp;ms clips — absolute
+distances sit on a ≈10⁻⁴ floor, so percentage changes carry no meaning; the
+encoder is excluded.</li>
+</ul>
+
+<h2 id="signal">8&nbsp;· Signal-domain metrics (descriptive)</h2>
+<p>Reported without significance tests: the paper's envelope metric
+(L1 between log-mel energy envelopes) improves with force granularity
+(seen 0.0595 → 0.0565, unseen 0.1046 → 0.0930); per-clip
+log-spectral distance improves with granularity on unseen objects
+(11.65 → 10.12 dB) and is slightly worse on seen objects (6.98 → 7.13 dB).
+The "envelope shape" column in the tables below is a different quantity —
+L1 between peak-normalised loudness envelopes — so the two are not
+comparable.</p>
+
+<h3>Per-clip descriptor differences</h3>
+<p><b>How to read these tables.</b> For every test clip we compute a set of
+standard audio descriptors on the real recording and on the generated version,
+and report the absolute difference, averaged per object and then over objects
+(the same aggregation as the FAD tables); mean ± SD across the five training
+runs. All signals are peak-normalised per clip first, so every column is
+independent of loudness. Lower = the generated clip's descriptor is closer to
+the real one. The descriptors: spectral centroid and bandwidth describe where
+the energy sits and how spread it is; spectral flatness and contrast describe
+how tone-like versus noise-like the spectrum is (a proxy for harmonic
+structure); the MFCC distance summarises overall timbre (coefficients 1–13,
+loudness coefficient excluded); envelope shape is the L1 distance between the
+peak-normalised loudness envelopes; T20 is the time for the envelope to fall
+20 dB below its peak, and the column shows the difference in that decay time.
+The <i>real vs real</i> row is the floor: two random halves of the same
+object's real strikes compared the same way — differences at or below this row
+are indistinguishable from natural strike-to-strike variability.</p>
+<p><b>DDSP generator.</b> On seen objects the differences sit at or below the
+real-vs-real floor for most descriptors and barely change across conditioning
+levels. On unseen objects every descriptor sits above the floor at L1 and
+moves toward it as force information is added — spectral centroid 1,603 → 1,156 Hz
+(floor 914), MFCC distance 48 → 42 (floor 28), decay-time difference
+39 → 33 ms (floor 33) — except spectral flatness, which stays at ≈4.4 dB
+against a floor of 2.5 dB at every level: the tone-versus-noise character of
+an unseen object is the one descriptor that force information does not
+improve.</p>
+<p><b>Seen objects (within)</b> (488 clips, 100 objects).</p><table><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (L1)</th><th>decay time T20 (ms)</th></tr><tr><td class='l'>L1 identity only</td><td>684 ± 4.7</td><td>565 ± 7.8</td><td>2.76 ± 0.11</td><td>1.64 ± 0.068</td><td>21.4 ± 0.24</td><td>0.0968 ± 0.00083</td><td>25.9 ± 0.47</td></tr><tr><td class='l'>L2 + peak-force scalar</td><td>695 ± 21</td><td>587 ± 8.7</td><td>2.65 ± 0.094</td><td>1.69 ± 0.077</td><td>21.9 ± 0.23</td><td>0.0961 ± 0.001</td><td>27.5 ± 0.67</td></tr><tr><td class='l'>L3 + 6-D descriptor</td><td>766 ± 25</td><td>626 ± 33</td><td>2.68 ± 0.058</td><td>1.82 ± 0.11</td><td>23.4 ± 0.62</td><td>0.101 ± 0.0027</td><td>31.2 ± 2</td></tr><tr><td class='l'>L4 + force frames</td><td>800 ± 66</td><td>679 ± 110</td><td>2.78 ± 0.26</td><td>1.62 ± 0.15</td><td>22.4 ± 0.7</td><td>0.096 ± 0.0034</td><td>26.6 ± 3.1</td></tr><tr><td class='l'><i>Real vs real (split-half floor)</i></td><td><i>875 ± 44</i></td><td><i>599 ± 26</i></td><td><i>2.98 ± 0.085</i></td><td><i>1.22 ± 0.045</i></td><td><i>25.8 ± 0.53</i></td><td><i>0.118 ± 0.0028</i></td><td><i>29.2 ± 0.8</i></td></tr></table>
+<p><b>Unseen objects (held-out)</b> (308 clips, 17 objects).</p><table><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (L1)</th><th>decay time T20 (ms)</th></tr><tr><td class='l'>L1 identity only</td><td>1,603 ± 31</td><td>1,412 ± 49</td><td>4.41 ± 0.3</td><td>5.17 ± 0.1</td><td>48.4 ± 0.17</td><td>0.112 ± 0.0041</td><td>39.3 ± 2.3</td></tr><tr><td class='l'>L2 + peak-force scalar</td><td>1,315 ± 54</td><td>1,366 ± 78</td><td>4.97 ± 0.099</td><td>4.94 ± 0.051</td><td>45.9 ± 0.48</td><td>0.115 ± 0.0052</td><td>35.2 ± 3</td></tr><tr><td class='l'>L3 + 6-D descriptor</td><td>1,161 ± 34</td><td>1,016 ± 100</td><td>4.6 ± 0.31</td><td>4.66 ± 0.15</td><td>43.5 ± 0.57</td><td>0.117 ± 0.008</td><td>36 ± 4</td></tr><tr><td class='l'>L4 + force frames</td><td>1,156 ± 37</td><td>946 ± 49</td><td>4.4 ± 0.23</td><td>4.48 ± 0.13</td><td>41.5 ± 0.51</td><td>0.104 ± 0.0024</td><td>32.7 ± 1</td></tr><tr><td class='l'><i>Real vs real (split-half floor)</i></td><td><i>914 ± 64</i></td><td><i>611 ± 22</i></td><td><i>2.54 ± 0.11</i></td><td><i>1.24 ± 0.055</i></td><td><i>27.8 ± 0.53</i></td><td><i>0.103 ± 0.0044</i></td><td><i>32.6 ± 2.6</i></td></tr></table>
+<p><b>Mel-spectrogram CVAE.</b> Both real and generated clips pass through the
+same mel inversion (the evaluation convention for this model), and the
+real-vs-real floor above is computed on raw recordings, so the floor is only
+an approximate reference here. The CVAE sits far above the DDSP generator on
+every descriptor, with much larger run-to-run spread; its per-level tables
+are not shown.</p>
+<p class="note">Descriptive only; no significance tests.</p>
+
+<h2 id="audio">9&nbsp;· Audio examples</h2>
+<p class="note">The clips labelled <i>real</i> are 200&nbsp;ms, peak-normalised
+excerpts from the ObjectFolder-Real dataset (Gao et al., CVPR 2023;
+&copy; Stanford Vision and Learning Lab), reproduced here for comparison under
+the ObjectFolder project's
+<a href="https://creativecommons.org/licenses/by/4.0/">CC&nbsp;BY&nbsp;4.0</a>
+license. The dataset itself is not redistributed; obtain it
+from the ObjectFolder project page. All other clips are model outputs.</p>
+<figure>
+<img src="img/fig_qualitative_main.png" alt="Spectrograms: real vs L1 vs L4 for one seen and one unseen object">
+<figcaption><b>Figure C.</b> One seen object (top) and one unseen object
+(bottom), each the median example by per-clip log-spectral distance of the
+L4 generation (first run): real recording,
+identity-only generation (L1), force-frame generation (L4); shared dB scale.
+On the unseen object neither model reproduces the real recording's modal-line
+structure: L1 sustains spectral lines the object does not have, and L4
+follows the decay envelope with a broadband texture.</figcaption>
+</figure>
+<p><b>Listen to the exact examples in Figure C, plus the best and worst
+cases.</b> Rows are ranked by per-clip log-spectral distance (LSD) of the L4
+generation (first run) against the real recording, over every test clip of
+the split; the median rows are the two examples shown in Figure C. Each clip
+is peak-normalised for listening, whereas the spectrograms share one dB
+scale, so level differences visible in the figure are not audible:</p>
+<table class="audio">
+<tr><th></th><th>Real recording</th><th>L1: identity only</th><th>L4: + force frames</th></tr>
+<tr><td class="l">Seen — best (LSD 2.87 dB)</td>
+<td><audio controls preload="none" src="audio/figc_seen_best_real.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_seen_best_L1.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_seen_best_L4.wav"></audio></td></tr>
+<tr><td class="l">Seen — median (LSD 7.16 dB), Figure C top</td>
+<td><audio controls preload="none" src="audio/figc_seen_real.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_seen_L1.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_seen_L4.wav"></audio></td></tr>
+<tr><td class="l">Seen — worst (LSD 13.84 dB)</td>
+<td><audio controls preload="none" src="audio/figc_seen_worst_real.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_seen_worst_L1.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_seen_worst_L4.wav"></audio></td></tr>
+<tr><td class="l">Unseen — best (LSD 4.59 dB)</td>
+<td><audio controls preload="none" src="audio/figc_unseen_best_real.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_unseen_best_L1.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_unseen_best_L4.wav"></audio></td></tr>
+<tr><td class="l">Unseen — median (LSD 10.34 dB), Figure C bottom</td>
+<td><audio controls preload="none" src="audio/figc_unseen_real.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_unseen_L1.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_unseen_L4.wav"></audio></td></tr>
+<tr><td class="l">Unseen — worst (LSD 22.30 dB)</td>
+<td><audio controls preload="none" src="audio/figc_unseen_worst_real.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_unseen_worst_L1.wav"></audio></td>
+<td><audio controls preload="none" src="audio/figc_unseen_worst_L4.wav"></audio></td></tr>
+</table>
+<h3>Further examples: system comparison per strike</h3>
+<p class="note">Three further strikes per split. Each row plays the same
+strike through the learned systems and the modal baseline of the reference
+table: real recording, DDSP (L4), then — for unseen objects only — DDSP with
+the envelope loss, then modal synthesis and DDSP with pretraining.
+The envelope-loss column is shown for unseen objects, the split on which
+the variant was trained (Sec.&nbsp;5).</p>
+<p><b>Seen objects (within).</b></p>
+<table class='audio'><tr><th></th><th>Real recording</th><th>DDSP (L4)</th><th>Modal synthesis (SAMPLE)</th><th>DDSP + pretraining</th></tr><tr><td class='l'>Example 1</td><td><audio controls preload='none' src='audio/w1_real.wav'></audio></td><td><audio controls preload='none' src='audio/w1_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/w1_modal.wav'></audio></td><td><audio controls preload='none' src='audio/w1_pretrain.wav'></audio></td></tr>
+<tr><td class='l'>Example 2</td><td><audio controls preload='none' src='audio/w2_real.wav'></audio></td><td><audio controls preload='none' src='audio/w2_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/w2_modal.wav'></audio></td><td><audio controls preload='none' src='audio/w2_pretrain.wav'></audio></td></tr>
+<tr><td class='l'>Example 3</td><td><audio controls preload='none' src='audio/w3_real.wav'></audio></td><td><audio controls preload='none' src='audio/w3_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/w3_modal.wav'></audio></td><td><audio controls preload='none' src='audio/w3_pretrain.wav'></audio></td></tr>
+</table>
+<p><b>Unseen objects (held-out).</b></p>
+<table class='audio'><tr><th></th><th>Real recording</th><th>DDSP (L4)</th><th>DDSP + envelope loss</th><th>Modal synthesis (SAMPLE)</th><th>DDSP + pretraining</th></tr><tr><td class='l'>Example 1</td><td><audio controls preload='none' src='audio/ex1_real.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_envloss.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_modal.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_pretrain.wav'></audio></td></tr>
+<tr><td class='l'>Example 2</td><td><audio controls preload='none' src='audio/ex2_real.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_envloss.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_modal.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_pretrain.wav'></audio></td></tr>
+<tr><td class='l'>Example 3</td><td><audio controls preload='none' src='audio/ex3_real.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_envloss.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_modal.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_pretrain.wav'></audio></td></tr>
+</table>
+
+<h2 id="code">Code and data</h2>
+<p class="foot">Code:
+<a href="https://github.com/BZFLL/force-conditioned-impact-sound">github.com/BZFLL/force-conditioned-impact-sound</a>
+— the two generators, the training code of the four-level grids and the
+descriptor ladder, the evaluation code and run configurations, and the
+result files behind Table 1, the reference systems, and the validation-split
+training-variant comparisons. ObjectFolder-Real is available from its authors'
+<a href="https://objectfolder.stanford.edu/">project page</a>; the real
+recordings played on this page are from ObjectFolder-Real (Gao et al.), with
+attribution and licence stated in Sec.&nbsp;9.</p>
+</main>
+</body>
+</html>

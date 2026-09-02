@@ -1,0 +1,14 @@
+# Evaluation environment, Python 3.14.
+# Install: pip install -r requirements.txt
+# CVAE evaluation on the MPS backend (macOS) additionally requires
+#   export PYTORCH_ENABLE_MPS_FALLBACK=1   (MPS lacks aten::linalg_lstsq)
+torch==2.10.0
+torchaudio==2.10.0
+numpy==2.3.5
+scipy==1.17.0
+pandas==2.3.3
+soundfile==0.13.1
+pyyaml==6.0.3
+matplotlib==3.10.8        # figure scripts
+lim-sample==2.2.0         # SAMPLE modal-parameter estimation (modal baseline)
+pytest==8.3.4             # test suite under tests/
