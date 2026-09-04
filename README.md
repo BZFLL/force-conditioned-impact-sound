@@ -1,11 +1,9 @@
 # Force Granularity in Neural Impact-Sound Generation
 
-Lianganzi Wang, Irán Román, Joshua D. Reiss, Anna Xambó Sedó
-
 **Project page** (audio examples, full result tables): [bzfll.github.io/force-conditioned-impact-sound](https://bzfll.github.io/force-conditioned-impact-sound/)
 
 Companion code for the paper *How Much Impact-Force Detail Does Neural
-Impact-Sound Generation Use?* (under review). Two generators — a
+Impact-Sound Generation Use?*. Two generators — a
 filterbank-DDSP model and a conditional mel-spectrogram VAE — are trained
 on four nested force representations (identity only → + peak-force scalar →
 + 6-D descriptor → + time-resolved force frames), on ObjectFolder-Real
