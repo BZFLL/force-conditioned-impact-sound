@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Figure 1: change in object-level FAD relative to L1 on the test split.
+"""Fig. 2 (rows L2-L4): change in object-level FAD relative to L1 on the test split.
 
 Paired-difference dot plot. Left/right panels = seen objects (within split)
 / unseen objects (held-out split); x-axis = L2/L3/L4; y-axis = FAD(level)
@@ -68,8 +68,8 @@ plt.rcParams.update({
 })
 fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.6), sharey=True,
                          constrained_layout=True)
-PANEL = {"within": "Seen objects (within)", "heldout": "Unseen objects (held-out)"}
-XT = ["L2\n+ scalar", "L3\n+ descriptor", "L4\n+ force frames"]
+PANEL = {"within": "Seen objects", "heldout": "Unseen objects"}
+XT = ["L2\n(peak)", "L3\n(descriptor)", "L4\n(frames)"]
 
 for ax, split in zip(axes, ("within", "heldout")):
     ax.axhline(0.0, color=INK2, lw=0.8, ls="--", zorder=1)
@@ -89,8 +89,8 @@ for ax, split in zip(axes, ("within", "heldout")):
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
 
-axes[0].set_ylabel("FAD change vs. identity-only L1\n(negative = better)")
-axes[0].annotate("L1 baseline", xy=(2.44, 0), xytext=(2.44, 0.035),
+axes[0].set_ylabel("FAD change vs. L1 (identity)\n(negative = better)")
+axes[0].annotate("L1", xy=(2.44, 0), xytext=(2.44, 0.035),
                  fontsize={True: 7, False: 7}[True], color=INK2, ha="right")
 axes[0].legend(loc="upper right", frameon=False, fontsize=8,
                handletextpad=0.4, borderaxespad=0.2)

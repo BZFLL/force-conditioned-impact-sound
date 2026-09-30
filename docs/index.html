@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>How Much Impact-Force Detail Does Neural Impact-Sound Generation Use?</title>
+<title>Time-Resolved Impact Force Improves Neural Impact-Sound Generation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -58,17 +58,21 @@
            padding-top:1.2em; margin-top:3em; }
   code { background:#efeee8; padding:.05em .35em; border-radius:4px; font-size:.88em; }
   b { font-weight:600; }
+  h3 { font-family:"Source Serif 4",Georgia,serif; font-weight:600; font-size:1.12em; margin:2.2em 0 .5em; }
+  table tr.grp td { background:#f1f0ea; font-weight:600; font-size:.92em; }
+  details { margin:.4em 0 1.4em; }
+  summary { cursor:pointer; color:var(--acc); font-size:.9em; }
+  details[open] > summary { margin-bottom:.3em; }
 </style>
 </head>
 <body>
 <header class="band"><div class="bandin">
-<h1>How Much Impact-Force Detail Does Neural Impact-Sound Generation&nbsp;Use?</h1>
-<p class="sub">Companion page — full matrices, control-experiment construction,
+<h1>Time-Resolved Impact Force Improves Neural Impact-Sound&nbsp;Generation</h1>
+<p class="sub">Companion page: result tables, controls,
 training details and audio examples.</p>
 <nav>
-<a href="#main">Main measurement</a> <a href="#protocol">Protocol</a>
-<a href="#robust">Robustness</a> <a href="#controls">Descriptor controls</a>
-<a href="#refs">Reference systems</a> <a href="#training">Training improvements</a>
+<a href="#main">Main comparison</a> <a href="#protocol">Protocol</a>
+<a href="#ablations">Ablations and controls</a> <a href="#refs">Baselines</a>
 <a href="#encoders">Encoder robustness</a> <a href="#signal">Signal metrics</a>
 <a href="#audio">Audio</a> <a href="#code">Code and data</a>
 </nav>
@@ -76,109 +80,213 @@ training details and audio examples.</p>
 <main>
 
 <div class="tldr"><b>TL;DR.</b> On 100 real objects with synchronously measured
-impact force (3,548 strikes), we condition a DDSP (differentiable digital
+impact force (3,548 strikes), we train a DDSP (differentiable digital
 signal processing) generator and a mel-spectrogram conditional variational
-autoencoder (CVAE) on four nested levels of force detail — identity only
-(L1), + peak-force scalar (L2), + 6-D descriptor (L3), + time-resolved force
-frames (L4). Only the full force time course (L4) beats the identity baseline
-in every architecture × familiarity combination. Coarse summaries help only
-in specific settings: every level on unseen objects for the DDSP generator
-(no detected gain on seen objects), and only the descriptor on seen objects
-for the CVAE (the scalar is significantly worse).</div>
+autoencoder (CVAE). Both are conditioned at four cumulative levels: identity only
+(L1), the peak force (L2), a six-number descriptor (L3) and the time-resolved force
+frames (L4). Each level keeps the inputs of the level below and adds one.
+Scored by object-level Fr&eacute;chet Audio Distance (FAD) with VGGish embeddings, L4 is the only level that improves
+on L1 for both generators, on objects seen and unseen in training. The peak and the descriptor help only in specific settings.
+For DDSP, both are detected as better on unseen objects and neither on seen objects.
+For the CVAE, the descriptor is detected as better only on seen objects, where the
+peak is detected as worse. For DDSP, pooling the force from 0.67&nbsp;ms to 2&nbsp;ms removes L4's gain over the descriptor on seen objects.</div>
 
-<h2 id="main">1&nbsp;· Main measurement (test set)</h2>
+<h2 id="main">1&nbsp;· Main comparison (test set)</h2>
 <figure>
-<img src="img/fig_ladder_main.png" alt="Change in FAD vs identity-only baseline across force-granularity levels">
+<img src="img/fig_ladder_main.png" alt="Change in FAD relative to L1 at L2 to L4">
 <figcaption><b>Figure A.</b> Change in object-level Fréchet Audio Distance
-(FAD; VGGish embeddings) relative to the
-identity-only baseline (L1) on the test set; seen objects left, unseen objects
-right. Circles: DDSP; squares: CVAE; error bars: 95% bootstrap confidence
+(FAD; VGGish embeddings) relative to each generator's
+own L1 (identity) on the test set; seen objects left, unseen objects
+right. Object-level FAD computes, for each object, the Fr&eacute;chet distance between Gaussians fitted to the embeddings of its
+generated and its real test clips, then averages over objects. Embeddings come from VGGish, an audio-classification network.
+Circles: DDSP; squares: CVAE; error bars: 95% bootstrap confidence
 intervals of the paired per-object difference (negative = better). An interval
-excluding the dashed zero line corresponds to a significance mark in the table
+reaching the dashed zero line means no mark (* or &dagger;) in the table
 below.</figcaption>
 </figure>
-<table style="text-align:center">
+<table id="tab-main" style="text-align:center">
   <tr><th rowspan=2 style="text-align:left">Force conditioning</th>
-      <th colspan=2>Seen objects (within)</th>
-      <th colspan=2>Unseen objects (held-out)</th></tr>
+      <th colspan=2>Seen objects (100)</th>
+      <th colspan=2>Unseen objects (17)</th></tr>
   <tr><th>DDSP</th><th>CVAE</th><th>DDSP</th><th>CVAE</th></tr>
-  <tr><td style="text-align:left">L1 identity only</td><td>1.58 &plusmn; 0.76</td><td>3.26 &plusmn; 0.78</td><td>2.27 &plusmn; 0.42</td><td>3.28 &plusmn; 0.48</td></tr>
-  <tr><td style="text-align:left">L2 + peak-force scalar</td><td>1.55 &plusmn; 0.78</td><td>3.53 &plusmn; 0.93&dagger;</td><td>2.04 &plusmn; 0.38*</td><td>3.14 &plusmn; 0.46</td></tr>
-  <tr><td style="text-align:left">L3 + 6-D force descriptor</td><td>1.60 &plusmn; 0.83</td><td>3.07 &plusmn; 0.75*</td><td>1.88 &plusmn; 0.46*</td><td>3.34 &plusmn; 0.55</td></tr>
-  <tr><td style="text-align:left">L4 + time-resolved force frames</td><td><b>1.40 &plusmn; 0.70*</b></td><td><b>2.89 &plusmn; 0.71*</b></td><td><b>1.82 &plusmn; 0.48*</b></td><td><b>3.02 &plusmn; 0.38*</b></td></tr>
+  <tr><td style="text-align:left">L1 (identity)</td><td>1.58 &plusmn; 0.76</td><td>3.26 &plusmn; 0.78</td><td>2.27 &plusmn; 0.42</td><td>3.28 &plusmn; 0.48</td></tr>
+  <tr><td style="text-align:left">L2 (peak)</td><td>1.55 &plusmn; 0.78</td><td>3.53 &plusmn; 0.93&dagger;</td><td>2.04 &plusmn; 0.38*</td><td>3.14 &plusmn; 0.46</td></tr>
+  <tr><td style="text-align:left">L3 (descriptor)</td><td>1.60 &plusmn; 0.83</td><td>3.07 &plusmn; 0.75*</td><td>1.88 &plusmn; 0.46*</td><td>3.34 &plusmn; 0.55</td></tr>
+  <tr><td style="text-align:left">L4 (frames)</td><td><b>1.40 &plusmn; 0.70*</b></td><td><b>2.89 &plusmn; 0.71*</b></td><td><b>1.82 &plusmn; 0.48*</b></td><td><b>3.02 &plusmn; 0.38*</b></td></tr>
 </table>
 <p class="note">Object-level FAD (VGGish), mean ± s.d. across objects; lower is
-better; best per column in bold. *: significantly better than L1; †:
-significantly worse (paired bootstrap over objects, Holm-corrected).
-L1 = 16-D identity embedding: per-object on the seen split, per-material on
-the unseen split. For the CVAE on seen objects, coarse force information can hurt when identity already carries it.</p>
+better; best per column in bold. *, &dagger;: detected as better, worse than L1 (paired
+bootstrap over objects, Holm correction within each column; Section&nbsp;2 gives both methods and the detection criterion).
+Seen objects: new strikes of the 100 training objects; unseen objects: 17 of the 100 objects excluded
+from training. L1 is a learned lookup table, one entry per object on the seen split and per material on the
+unseen split, with a fixed width of 16 in both.</p>
 
-<h2 id="protocol">2&nbsp;· Statistical protocol and design resolution</h2>
-<p>Comparisons use paired bootstrap over objects (2,000 resamples) with Holm
-correction; objects, not clips, are the resampling unit. The primary metric is
-object-level FAD (VGGish embeddings).</p>
-<p>The design's <b>minimum detectable effect is ≈6–11%</b> of baseline FAD,
-estimated from the noise between five identically configured baseline runs
-(split-half comparisons of runs that differ only in random initialisation give
-a null-effect noise level; the detection threshold follows from it): the
-range spans single-run and pooled estimates, with the pooled point at ≈7% of
-baseline FAD at 70% power. On the
-DDSP generator, seen-object summary effects are at most ≈2% of baseline —
-below this resolution — so these nulls indicate no detected gain, not absence
-of effect. The CVAE's seen-object summary effects lie at or above this resolution: a
-moderate gain for the descriptor and a significant degradation for the
-scalar — plausibly a finite-data effect, since identity already carries the
-information and, with about 26 training strikes per object, there may be too little data to reliably discount the one-dimensional input.</p>
-
-<h2 id="robust">3&nbsp;· Robustness of the main comparison</h2>
-<p><b>Second encoder.</b> The DDSP L4−L1 comparison replicates under CLAP
-embeddings: seen d = −0.30, unseen d = −1.53 (d = Cohen's d of the paired
-per-object difference), both intervals excluding zero.</p>
-<p><b>Force-shuffle control (validation split).</b> Feeding the trained L4 model
-shuffled (mismatched) force windows at evaluation degrades FAD in every run:
-aggregate Δ = +0.050, 95% CI [+0.028, +0.071], d = 0.47, 68% of objects worse;
-the criterion is the paired 95% interval excluding zero.</p>
-<table>
-<tr><th class="l">Model run</th><th>FAD, correct force</th>
-<th>FAD, shuffled force</th><th>Δ (shuffled − correct)</th></tr>
-<tr><td class='l'>run 1</td><td>1.525</td><td>1.545</td><td>+0.020</td></tr>
-<tr><td class='l'>run 2</td><td>1.422</td><td>1.480</td><td>+0.058</td></tr>
-<tr><td class='l'>run 3</td><td>1.574</td><td>1.616</td><td>+0.043</td></tr>
-<tr><td class='l'>run 4</td><td>1.199</td><td>1.273</td><td>+0.074</td></tr>
-<tr><td class='l'>run 5</td><td>1.141</td><td>1.194</td><td>+0.053</td></tr>
+<p id="main-cmp"><b>Paired comparisons with L1.</b></p>
+<table id="tab-main-cmp">
+<tr><th class="l">Generator</th><th class="l">Objects</th><th class="l">Comparison</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th>Holm <i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td class='l'>L2 (peak) − L1</td><td>−0.033</td><td>[−0.079, +0.016]</td><td>−0.14</td><td>0.336</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td class='l'>L3 (descriptor) − L1</td><td>+0.012</td><td>[−0.040, +0.066]</td><td>+0.04</td><td>0.689</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td class='l'>L4 (frames) − L1</td><td>−0.185</td><td>[−0.235, −0.135]</td><td>−0.70</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td class='l'>L2 (peak) − L1</td><td>−0.223</td><td>[−0.311, −0.136]</td><td>−1.19</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td class='l'>L3 (descriptor) − L1</td><td>−0.388</td><td>[−0.497, −0.277]</td><td>−1.65</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td class='l'>L4 (frames) − L1</td><td>−0.452</td><td>[−0.585, −0.320]</td><td>−1.59</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td class='l'>L2 (peak) − L1</td><td>+0.267</td><td>[+0.182, +0.355]</td><td>+0.63</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td class='l'>L3 (descriptor) − L1</td><td>−0.187</td><td>[−0.265, −0.112]</td><td>−0.47</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td class='l'>L4 (frames) − L1</td><td>−0.370</td><td>[−0.454, −0.285]</td><td>−0.85</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td class='l'>L2 (peak) − L1</td><td>−0.138</td><td>[−0.340, +0.028]</td><td>−0.34</td><td>0.240</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td class='l'>L3 (descriptor) − L1</td><td>+0.060</td><td>[−0.105, +0.211]</td><td>+0.17</td><td>0.454</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td class='l'>L4 (frames) − L1</td><td>−0.263</td><td>[−0.405, −0.127]</td><td>−0.88</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
 </table>
+<p class="note">&Delta; = level − L1, paired over objects, five-seed means (negative = better); <i>d</i>: Cohen's <i>d</i> of the per-object difference; Holm over the three
+comparisons per generator and split.</p>
 
-<h2 id="controls">4&nbsp;· Descriptor controls: construction and results</h2>
-<p>The seen-object null for coarse summaries (DDSP) survives three alternative
-extractions, so it is not an artefact of descriptor choice:</p>
-<ul>
-<li><b>Corrected re-extraction.</b> Two of the original six dimensions are
-physically unreliable on this data — contact often lasts under a millisecond,
-so the pulse width collapses onto the 48&nbsp;kHz sampling grid for roughly half
-the strikes, and the decay-constant fit is degenerate for ≈9% of strikes.
-Descriptors re-extracted with corrected definitions reproduce the null.</li>
-<li><b>Budget-matched alternatives.</b> Alternative six-number summaries under
-the same dimensionality, scaling and training-split statistics also reproduce
-it.</li>
-<li><b>PCA-6 summary.</b> A six-dimensional linear projection fitted on training
-force windows only — the variance-optimal six-number summary. The force frames
-beat even this summary: d = −0.99 (Δ = −0.30; VGGish, seen objects, DDSP, test set).</li>
-</ul>
-<p><b>Information view.</b> Predicting the
-actual L4 input (300 frames × 2 channels) from each summary, fitted on training
-strikes and scored on validation: amplitude is recoverable (R² 0.75–0.84);
-temporal shape only partially (0.20–0.62 linear), and least by the summaries
-used in L2/L3 (0.20 and 0.39).</p>
+<p id="setlevel"><b>Set-level FAD.</b> Set-level FAD is one Fr&eacute;chet distance per DDSP run over all test clips of a split (VGGish embeddings). L4 has the lowest set-level FAD on both splits. The windowed descriptor, an alternative to L3, computes six force numbers on the 200&nbsp;ms force window, which starts 5&nbsp;ms before the force peak (Section&nbsp;3).</p>
+<table id="tab-setlevel">
+<tr><th class="l" rowspan="2">Force conditioning</th><th colspan="3">Seen objects (100)</th><th colspan="3">Unseen objects (17)</th></tr>
+<tr><th>FAD</th><th>&Delta; vs L1</th><th>runs below L1</th><th>FAD</th><th>&Delta; vs L1</th><th>runs below L1</th></tr>
+<tr><td class='l'>L1 (identity)</td><td>0.524 &plusmn; 0.054</td><td></td><td></td><td>2.018 &plusmn; 0.151</td><td></td><td></td></tr>
+<tr><td class='l'>L2 (peak)</td><td>0.536 &plusmn; 0.028</td><td>+0.012</td><td>2 of 5</td><td>1.632 &plusmn; 0.087</td><td>−0.386</td><td>5 of 5</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>0.577 &plusmn; 0.040</td><td>+0.053</td><td>1 of 5</td><td>1.421 &plusmn; 0.097</td><td>−0.596</td><td>5 of 5</td></tr>
+<tr><td class='l'>windowed descriptor</td><td>0.634 &plusmn; 0.065</td><td>+0.109</td><td>1 of 5</td><td>1.483 &plusmn; 0.125</td><td>−0.534</td><td>5 of 5</td></tr>
+<tr><td class='l'>L4 (frames)</td><td>0.460 &plusmn; 0.160</td><td>−0.064</td><td>4 of 5</td><td>1.244 &plusmn; 0.091</td><td>−0.774</td><td>5 of 5</td></tr>
+</table>
+<p class="note">Mean &plusmn; s.d. over five runs; &Delta; = row − L1, paired by run (negative = better).</p>
+
+<p id="clap-panns"><b>CLAP and PANNs.</b> We repeat the L4 comparisons under CLAP, a language&ndash;audio embedding, and
+PANNs CNN14, an audio-tagging network. For DDSP, L4 improves on L1 under CLAP on both splits and under PANNs on seen objects. Under PANNs on unseen
+objects the difference is not detected (<i>d</i> = −0.08). For the CVAE, L4 improves on L1 only under CLAP on seen
+objects, and is detected as worse under PANNs on seen objects and under CLAP on unseen objects. Under PANNs on
+unseen objects its difference from L1 is not detected.</p>
+<table id="tab-robust">
+<tr><th class="l">Generator</th><th class="l">Objects</th><th class="l">Encoder</th><th class="l">Comparison</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>objects</th><th class="l">Reading</th></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen</td><td class='l'>CLAP</td><td class='l'>L4 − L1</td><td>−0.017</td><td>[−0.028, −0.006]</td><td>−0.30</td><td>0.001</td><td>100</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen</td><td class='l'>CLAP</td><td class='l'>L4 − windowed descriptor</td><td>−0.064</td><td>[−0.077, −0.052]</td><td>−0.97</td><td>&lt;0.001</td><td>100</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − L1</td><td>−1.45&times;10<sup>−4</sup></td><td>[−2.38, −0.48]&times;10<sup>−4</sup></td><td>−0.29</td><td>0.002</td><td>100</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − windowed descriptor</td><td>−1.66&times;10<sup>−4</sup></td><td>[−2.58, −0.75]&times;10<sup>−4</sup></td><td>−0.36</td><td>&lt;0.001</td><td>100</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen</td><td class='l'>CLAP</td><td class='l'>L4 − L1</td><td>−0.215</td><td>[−0.281, −0.154]</td><td>−1.53</td><td>&lt;0.001</td><td>17</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen</td><td class='l'>CLAP</td><td class='l'>L4 − windowed descriptor</td><td>−0.059</td><td>[−0.084, −0.036]</td><td>−1.11</td><td>&lt;0.001</td><td>17</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − L1</td><td>−0.73&times;10<sup>−4</sup></td><td>[−5.41, +3.59]&times;10<sup>−4</sup></td><td>−0.08</td><td>0.737</td><td>17</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − windowed descriptor</td><td>+1.83&times;10<sup>−4</sup></td><td>[−0.03, +3.71]&times;10<sup>−4</sup></td><td>+0.48</td><td>0.054</td><td>17</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen</td><td class='l'>CLAP</td><td class='l'>L4 − L1</td><td>−0.073</td><td>[−0.089, −0.057]</td><td>−0.91</td><td>&lt;0.001</td><td>100</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen</td><td class='l'>CLAP</td><td class='l'>L4 − L3 (descriptor)</td><td>−0.046</td><td>[−0.058, −0.034]</td><td>−0.71</td><td>&lt;0.001</td><td>100</td><td class='l'>replicates</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − L1</td><td>+1.70&times;10<sup>−4</sup></td><td>[+0.77, +2.65]&times;10<sup>−4</sup></td><td>+0.35</td><td>&lt;0.001</td><td>100</td><td class='l'>reverses</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − L3 (descriptor)</td><td>+1.83&times;10<sup>−4</sup></td><td>[+0.80, +2.88]&times;10<sup>−4</sup></td><td>+0.35</td><td>&lt;0.001</td><td>100</td><td class='l'>reverses</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen</td><td class='l'>CLAP</td><td class='l'>L4 − L1</td><td>+0.034</td><td>[+0.008, +0.061]</td><td>+0.57</td><td>0.010</td><td>17</td><td class='l'>reverses</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen</td><td class='l'>CLAP</td><td class='l'>L4 − L3 (descriptor)</td><td>+0.041</td><td>[+0.016, +0.066]</td><td>+0.74</td><td>&lt;0.001</td><td>17</td><td class='l'>reverses</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − L1</td><td>−0.95&times;10<sup>−4</sup></td><td>[−2.94, +0.78]&times;10<sup>−4</sup></td><td>−0.24</td><td>0.287</td><td>17</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>L4 − L3 (descriptor)</td><td>−4.42&times;10<sup>−4</sup></td><td>[−5.79, −3.13]&times;10<sup>−4</sup></td><td>−1.53</td><td>&lt;0.001</td><td>17</td><td class='l'>replicates</td></tr>
+</table>
+<p class="note">Object-level FAD, test set, five-seed means; &Delta; = B − A (negative = B better); paired bootstrap
+over objects, no Holm correction. Replicates: detected with &Delta; &lt; 0; reverses: detected with &Delta; &gt; 0. We score the CVAE
+against Griffin&ndash;Lim reconstructions (waveforms estimated from the real mel spectrograms), as under VGGish, so its distances are on their own scale. PANNs distances are on a much smaller scale than CLAP's, so compare &Delta; within one encoder. The rows of this table keep the direction L4 &minus; other system, so a negative &Delta; means L4 is closer to the recordings.</p>
+
+<h2 id="protocol">2&nbsp;· Statistical protocol and detectable difference</h2>
+<p>Comparisons use a paired bootstrap. Objects are resampled with replacement 2,000 times, and each resample gives the mean
+per-object FAD difference between two systems. The clips of an object stay together in every resample. The 95% confidence interval (CI) is the 2.5th to 97.5th
+percentile of these resampled means. The two-sided <i>p</i> is twice the smaller share of resampled means on either side of zero. Holm correction raises the <i>p</i>
+values within a family of comparisons to account for the number of comparisons in that family. Cohen's <i>d</i> is the mean
+per-object difference divided by its standard deviation across objects. The primary metric is object-level FAD (VGGish
+embeddings). Each level's score is the mean over five training runs, and each run's checkpoint is chosen on validation loss. A difference is detected when <i>p</i> &lt; 0.05, the
+95% CI excludes zero and |<i>d</i>| &ge; 0.2; otherwise it is not detected. In the first two tables of Section&nbsp;1, <i>p</i>
+is Holm-corrected; the note under each other table says whether its <i>p</i> is corrected.</p>
+<p>The design detects a difference of <b>&asymp;7% of the L1 FAD</b> at 70% power under the Holm-corrected criterion,
+estimated from five L1 runs (DDSP, seen objects, validation set). On the DDSP generator,
+the peak and the descriptor change FAD on seen objects by at most &asymp;2% of the L1 FAD, below 7%, and are not detected. For the CVAE,
+on seen objects the descriptor (5.7% of its L1 FAD) is detected as better and
+the peak (8.2%) as worse.</p>
+
+<h2 id="ablations">3&nbsp;· Ablations and controls (DDSP, test set, unless stated)</h2>
+<p>The table below has the rows of the paper's Table&nbsp;2: two alternative descriptors against L1, then the inputs and
+controls against L4, then the two training variants against L4. The first two rows of the middle group compare the windowed
+descriptor and L3 with L4. The subsections below define each row and give the results behind it.</p>
+<table id="tab-ablation">
+<tr><th class="l" rowspan="2">Comparison B − A</th><th colspan="5">Seen objects (100)</th><th colspan="5">Unseen objects (17)</th></tr>
+<tr><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr class='grp'><td class='l' colspan='11'>Alternative descriptors, against L1</td></tr>
+<tr><td class='l'>windowed descriptor − L1</td><td>+0.061</td><td>[+0.000, +0.122]</td><td>+0.20</td><td>0.050</td><td class='l'>not detected</td><td>−0.280</td><td>[−0.385, −0.164]</td><td>−1.16</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>PCA-6 descriptor − L1</td><td>+0.118</td><td>[+0.050, +0.191]</td><td>+0.32</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>not run</td><td></td><td></td><td></td><td class='l'></td></tr>
+<tr class='grp'><td class='l' colspan='11'>Inputs and controls, against L4</td></tr>
+<tr><td class='l'>windowed descriptor − L4</td><td>+0.246</td><td>[+0.188, +0.306]</td><td>+0.81</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.172</td><td>[+0.077, +0.274]</td><td>+0.79</td><td>0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>L3 − L4</td><td>+0.197</td><td>[+0.149, +0.246]</td><td>+0.80</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.064</td><td>[−0.016, +0.158]</td><td>+0.35</td><td>0.125</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>L4&prime; − L4</td><td>+0.056</td><td>[−0.001, +0.113]</td><td>+0.19</td><td>0.056</td><td class='l'>not detected</td><td>−0.297</td><td>[−0.466, −0.127]</td><td>−0.85</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>frame shuffle − L4</td><td>+0.040</td><td>[+0.016, +0.063]</td><td>+0.33</td><td>0.002</td><td class='l'>detected, worse</td><td>−0.017</td><td>[−0.109, +0.082]</td><td>−0.08</td><td>0.688</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>template pulse − L4</td><td>+0.212</td><td>[+0.167, +0.259]</td><td>+0.88</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.131</td><td>[+0.044, +0.222]</td><td>+0.69</td><td>0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>frames at 2&nbsp;ms − L4</td><td>+0.206</td><td>[+0.157, +0.254]</td><td>+0.80</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.176</td><td>[+0.107, +0.251]</td><td>+1.14</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>frames at 6.7&nbsp;ms − L4</td><td>+0.197</td><td>[+0.146, +0.249]</td><td>+0.74</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.074</td><td>[−0.017, +0.162]</td><td>+0.39</td><td>0.104</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>resonance oracle − L4</td><td>−0.108</td><td>[−0.155, −0.064]</td><td>−0.47</td><td>&lt;0.001</td><td class='l'>detected, better</td><td>+0.173</td><td>[+0.043, +0.299]</td><td>+0.63</td><td>0.005</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>shuffled resonance oracle − L4</td><td>−0.058</td><td>[−0.104, −0.014]</td><td>−0.26</td><td>0.013</td><td class='l'>detected, better</td><td>+0.238</td><td>[+0.036, +0.484]</td><td>+0.47</td><td>0.013</td><td class='l'>detected, worse</td></tr>
+<tr class='grp'><td class='l' colspan='11'>Training variants, against L4</td></tr>
+<tr><td class='l'>envelope loss − L4</td><td>+0.028</td><td>[−0.040, +0.100]</td><td>+0.08</td><td>0.444</td><td class='l'>not detected</td><td>−0.149</td><td>[−0.310, +0.033]</td><td>−0.39</td><td>0.108</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>pretraining − L4</td><td>−0.199</td><td>[−0.272, −0.127]</td><td>−0.57</td><td>&lt;0.001</td><td class='l'>detected, better</td><td>−0.408</td><td>[−0.585, −0.233]</td><td>−1.07</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+</table>
+<p class="note">Object-level FAD (VGGish), test set; &Delta; = B − A (negative = B better); paired bootstrap over objects,
+no Holm correction; Reading uses the uncorrected <i>p</i>, as in the paper's Table&nbsp;2. Five runs per cell, except the oracles and the training variants (three runs each); the oracles are
+compared with the L4 runs of the same seeds. Frame shuffle: reassignment 1 of the ten below.</p>
+
+<h3 id="descriptors">Alternative descriptors</h3>
+<p>L3's six numbers come from the full 6&nbsp;s recording of the strike. They are the peak, its pulse width (full width at
+half maximum, FWHM), the bounce count and the max bounce ratio of the later bounces. The last two are the decay constant
+after the peak and the asymmetry of rise and fall. Two of them are unreliable on this data. The pulse width is two samples or fewer at 48&nbsp;kHz for 51%
+of strikes, and the decay-constant fit is degenerate for 9%. The windowed descriptor therefore computes six numbers on the
+200&nbsp;ms force window with corrected definitions. The windowed three-number descriptor keeps its peak, contact duration and
+asymmetry, and the impulse is the integral of the force magnitude. The PCA-6 descriptor is the six leading principal
+components of the force window, fitted on training strikes (seen objects only).</p>
+<p>On seen objects no alternative descriptor improves on L1, so the seen-object result for L3 does not depend on the
+choice of descriptor. The PCA-6 descriptor keeps 93% of the variance of the force curve and 91% of that of its
+peak-normalised shape (test strikes). It still scores worse than L1 (<i>d</i> = +0.32) and worse than L4
+(<i>d</i> = +0.99). The windowed descriptor is detected as worse than L4 on both splits. Against L4, L3's
+difference on unseen objects is not detected (+0.064 [−0.016, +0.158]).</p>
+<table id="tab-ladder-fad">
+<tr><th class="l">Conditioning</th><th>seen (100)</th><th>unseen (17)</th></tr>
+<tr><td class='l'>L1</td><td>1.584</td><td>2.267</td></tr>
+<tr><td class='l'>L2 (peak)</td><td>1.550</td><td>2.044</td></tr>
+<tr><td class='l'>impulse</td><td>1.553</td><td>2.028</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>1.595</td><td>1.879</td></tr>
+<tr><td class='l'>windowed three-number descriptor</td><td>1.621</td><td>1.981</td></tr>
+<tr><td class='l'>windowed descriptor</td><td>1.645</td><td>1.987</td></tr>
+<tr><td class='l'>PCA-6 descriptor</td><td>1.702</td><td>not run</td></tr>
+<tr><td class='l'>L4 (frames)</td><td>1.399</td><td>1.815</td></tr>
+</table>
+<p class="note">DDSP, object-level FAD (VGGish), test set, five-seed means; lower is better.</p>
+<details>
+<summary>All descriptor comparisons, with Holm-corrected <i>p</i></summary>
+<table id="tab-ladder">
+<tr><th class="l" rowspan="2">Comparison B − A</th><th colspan="6">Seen objects (100)</th><th colspan="6">Unseen objects (17)</th></tr>
+<tr><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>L2 (peak) − L1</td><td>−0.033</td><td>[−0.083, +0.015]</td><td>−0.14</td><td>0.189</td><td>0.544</td><td class='l'>not detected</td><td>−0.223</td><td>[−0.308, −0.134]</td><td>−1.19</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>impulse − L1</td><td>−0.031</td><td>[−0.070, +0.010]</td><td>−0.15</td><td>0.136</td><td>0.544</td><td class='l'>not detected</td><td>−0.239</td><td>[−0.303, −0.177]</td><td>−1.74</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>L3 (descriptor) − L1</td><td>+0.012</td><td>[−0.042, +0.066]</td><td>+0.04</td><td>0.665</td><td>0.665</td><td class='l'>not detected</td><td>−0.388</td><td>[−0.497, −0.277]</td><td>−1.65</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>windowed three-number descriptor − L1</td><td>+0.038</td><td>[−0.012, +0.084]</td><td>+0.14</td><td>0.140</td><td>0.544</td><td class='l'>not detected</td><td>−0.286</td><td>[−0.399, −0.169]</td><td>−1.16</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>windowed descriptor − L1</td><td>+0.061</td><td>[+0.000, +0.122]</td><td>+0.20</td><td>0.050</td><td>0.250</td><td class='l'>not detected</td><td>−0.280</td><td>[−0.385, −0.164]</td><td>−1.16</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>L4 (frames) − L1</td><td>−0.185</td><td>[−0.236, −0.136]</td><td>−0.70</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td><td>−0.452</td><td>[−0.591, −0.328]</td><td>−1.59</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>impulse − L2 (peak)</td><td>+0.002</td><td>[−0.042, +0.043]</td><td>+0.01</td><td>0.948</td><td>&ndash;</td><td class='l'>not detected</td><td>−0.016</td><td>[−0.087, +0.062]</td><td>−0.10</td><td>0.658</td><td>&ndash;</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>windowed three-number descriptor − L3 (descriptor)</td><td>+0.026</td><td>[−0.017, +0.070]</td><td>+0.12</td><td>0.237</td><td>&ndash;</td><td class='l'>not detected</td><td>+0.102</td><td>[+0.042, +0.174]</td><td>+0.70</td><td>&lt;0.001</td><td>&ndash;</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>windowed descriptor − windowed three-number descriptor</td><td>+0.023</td><td>[−0.018, +0.068]</td><td>+0.11</td><td>0.268</td><td>&ndash;</td><td class='l'>not detected</td><td>+0.007</td><td>[−0.112, +0.108]</td><td>+0.03</td><td>0.870</td><td>&ndash;</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>windowed descriptor − L4 (frames)</td><td>+0.246</td><td>[+0.188, +0.306]</td><td>+0.81</td><td>&lt;0.001</td><td>&ndash;</td><td class='l'>detected, worse</td><td>+0.172</td><td>[+0.077, +0.274]</td><td>+0.79</td><td>0.001</td><td>&ndash;</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>PCA-6 descriptor − L1</td><td>+0.118</td><td>[+0.050, +0.191]</td><td>+0.32</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>not run</td><td></td><td></td><td></td><td></td><td class='l'></td></tr>
+<tr><td class='l'>PCA-6 descriptor − windowed descriptor</td><td>+0.057</td><td>[+0.018, +0.096]</td><td>+0.27</td><td>0.003</td><td>0.003</td><td class='l'>detected, worse</td><td>not run</td><td></td><td></td><td></td><td></td><td class='l'></td></tr>
+<tr><td class='l'>PCA-6 descriptor − L4 (frames)</td><td>+0.303</td><td>[+0.246, +0.367]</td><td>+0.99</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>not run</td><td></td><td></td><td></td><td></td><td class='l'></td></tr>
+<tr><td class='l'>L3 (descriptor) − L4 (frames)</td><td>+0.197</td><td>[+0.149, +0.246]</td><td>+0.80</td><td>&lt;0.001</td><td>&ndash;</td><td class='l'>detected, worse</td><td>+0.064</td><td>[−0.016, +0.158]</td><td>+0.35</td><td>0.125</td><td>&ndash;</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>L3 (descriptor) − L2 (peak)</td><td>+0.045</td><td>[−0.005, +0.095]</td><td>+0.18</td><td>0.076</td><td>&ndash;</td><td class='l'>not detected</td><td>−0.165</td><td>[−0.229, −0.101]</td><td>−1.15</td><td>&lt;0.001</td><td>&ndash;</td><td class='l'>detected, better</td></tr>
+</table>
+<p class="note">DDSP, object-level FAD (VGGish), five-seed means; &Delta; = B − A (negative = B better); paired bootstrap over
+objects, drawn separately from Section&nbsp;1, so CI and <i>p</i> of the comparisons with L1 differ slightly. Reading uses the
+uncorrected <i>p</i>, as in the paper's Table&nbsp;2. Holm <i>p</i> covers the first six rows and, separately, the PCA-6 rows.</p>
+</details>
+<p><b>Information view.</b> Linear and quadratic regressions from the peak and each descriptor below to the
+L4 input (300 frames × 2 channels) were fitted on training strikes and scored on validation.
+The linear fits recover the raw curve (R² 0.75–0.84) and temporal shape partly (0.20–0.62),
+least from L2 and L3 (0.20, 0.39).</p>
 <table>
-<tr><th class="l">Summary</th><th>R² raw curve (linear)</th>
+<tr><th class="l">Predictor</th><th>R² raw curve (linear)</th>
 <th>R² temporal shape (linear)</th><th>R² temporal shape (quadratic)</th></tr>
-<tr><td class='l'>Peak scalar (1-D)</td><td>0.75</td><td>0.20</td><td>0.30</td></tr>
-<tr><td class='l'>Original 6-D descriptor</td><td>0.77</td><td>0.39</td><td>0.52</td></tr>
-<tr><td class='l'>Corrected core set (3-D: peak, contact duration, asymmetry)</td><td>0.77</td><td>0.53</td><td>0.59</td></tr>
-<tr><td class='l'>Corrected 6-D descriptor</td><td>0.84</td><td>0.62</td><td>0.72</td></tr>
+<tr><td class='l'>L2 (peak)</td><td>0.75</td><td>0.20</td><td>0.30</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>0.77</td><td>0.39</td><td>0.52</td></tr>
+<tr><td class='l'>windowed three-number descriptor</td><td>0.77</td><td>0.53</td><td>0.59</td></tr>
+<tr><td class='l'>windowed descriptor</td><td>0.84</td><td>0.62</td><td>0.72</td></tr>
 </table>
-<p><b>How much of each descriptor dimension identity already carries</b>
-(share of variance explained by per-object identity; training strikes, seen split):</p>
+<p><b>Share of variance in each descriptor dimension explained by per-object identity</b>
+(training strikes, seen split):</p>
 <table>
 <tr><th class="l">Descriptor dimension</th><th>R² from identity</th></tr>
 <tr><td class='l'>Peak force</td><td>0.62</td></tr>
@@ -189,188 +297,414 @@ used in L2/L3 (0.20 and 0.39).</p>
 <tr><td class='l'>Asymmetry</td><td>0.67</td></tr>
 </table>
 <p class="note">Pulse width
-(0.13) and decay (0.29) are the dimensions least explained by identity. Both analyses
-use force inputs only — no model outputs, no test data.</p>
+(0.13) and decay constant (0.29) are least explained by identity. Both analyses
+use force inputs only: no model outputs, no test data.</p>
 
-<h2 id="refs">5&nbsp;· Reference systems (validation split)</h2>
-<figure>
-<img src="img/fig_reference_systems.png" alt="FAD of all systems on both validation splits">
-<figcaption><b>Figure B.</b> FAD of every system on the two validation splits
-(lower is better). Bars = mean over the three seed-matched runs; open circles =
-individual runs; retrieval, modal synthesis and the white-noise reference are
-deterministic given their inputs.</figcaption>
-</figure>
-<table><tr><th>System</th><th>Seen objects (within)</th><th>Unseen objects (held-out)</th></tr><tr><td>White-noise reference</td><td>5.60</td><td>4.95</td></tr><tr><td>Modal synthesis (SAMPLE)</td><td>2.13</td><td>1.96</td></tr><tr><td>Retrieval (closest-force training recording)</td><td>1.24</td><td>0.96</td></tr><tr><td>DDSP (L4)</td><td>1.51</td><td>1.79</td></tr><tr><td>  + envelope loss</td><td>—</td><td>1.65</td></tr><tr><td>  + synthetic-IR pretraining</td><td>1.18</td><td>1.36</td></tr></table>
-<p class="note">All learned systems conditioned on L4. Retrieval returns the
-training recording with the closest impact force; on unseen objects it can only
-return other objects' recordings, so its low FAD partly reflects the advantage
-of emitting real recordings — a reference floor, not a viable system. The modal
-baseline is built on the open-source SAMPLE package with the same information
-budget as the learned models (recordings + measured force; no geometry).
-Section 1 reports the test set; this section reports the validation split,
-with one exception: the white-noise reference is a test-set value. The learned
-rows are the mean over seeds 42–44. "—" marks a split on which a variant was
-not trained: the envelope-loss variant was trained on the held-out split
-only — it targets the ringing artefact on unseen objects, where the
-generated decay tail comes out as sustained broadband noise instead of the
-recording's tonal modal decay (Sec.&nbsp;9, Figure&nbsp;C, unseen row).</p>
-
-<h2 id="training">6&nbsp;· Training improvements (DDSP; validation, three runs per cell)</h2>
-<p><b>Envelope loss.</b> The multi-resolution STFT loss is nearly blind to decay
-shape: disabling the modal branch changes the training loss by only ≈1% while
-the ringing artefact persists. Adding an envelope-L1 term (weight 8.8, chosen from a validation-split sweep) improves
-FAD by 7.2–8.5% at a 6.7% training-loss cost and moves tail energy toward the
-real value (tail-energy index — mean RMS envelope over the 100–200&nbsp;ms tail
-of the 200&nbsp;ms window, divided by the envelope peak — 0.09 → 0.10; real
-recordings 0.12).</p>
-<p><b>Synthetic-impulse-response pretraining.</b> Pretraining on a fully
-synthetic corpus — random decaying noise bursts convolved with 2,000 simulated
-room impulse responses, the burst doubling as the force input — then
-fine-tuning on real data improves FAD by 19–24% (seen) and 17–28% (unseen), the
-largest gain in this study. The pretrained model without fine-tuning is far worse
-than every baseline (FAD 4.20): the gain is the synthetic prior plus brief
-fine-tuning.</p>
-
-<h2 id="encoders">7&nbsp;· Encoder robustness of the pretraining comparison (validation)</h2>
-<p>Does the improvement from synthetic pretraining (Section 6) survive a change
-of encoder and of distance? Each cell is the per-run change in distribution
-distance between the pretrained + fine-tuned model and the no-pretraining
-model trained with the same random seed (negative = improvement). The same
-comparison is shown under two aggregations: <b>Table 7a</b> uses the paper's
-object-level aggregation; <b>Table 7b</b> uses the set-level aggregation,
-which is the standard definition of FAD in the literature.</p>
-<p class="note">Green = distance decreased after pretraining (improvement);
-red = increased (worse).
-Runs 1–3 are three trainings that differ only in random initialisation.</p>
-<p><b>How each cell is computed.</b> Each validation clip is embedded once —
-VGGish and CLAP with the paper's own pipeline, PANNs, PaSST, EnCodec and
-OpenL3 with the <a href="https://github.com/YoonjinXD/kadtk">kadtk</a>
-toolchain — and generated is compared with real under two distances (Fréchet,
-and the kernel distance KAD) and two aggregations: <i>object-level</i>, the
-distance per object between its generated and its own real clips, averaged
-over objects as in the paper; <i>set-level</i>, one distance over all clips of
-the split, kadtk's convention. The cell shows the percentage change from
-pretraining; a row counts as robust when all three runs are negative.</p>
-<p><b>Why the percentages differ between the two tables.</b> With 4–10 (seen)
-or 15–25 (unseen) clips per object, each per-object distance contains a
-small-sample floor that neither model can remove. Measured on real recordings
-against themselves (two random halves of each object's real clips, VGGish
-features as in the paper), that floor is ≈27% of the no-pretraining score at
-object level versus ≈8% at set level (unseen objects, run 1;
-a small-sample floor diagnostic). The floor dilutes
-object-level percentages, so the same improvement reads smaller at object
-level. Compare sizes within a table, not across the two tables; directions
-are comparable everywhere.</p>
-<p class="note">The tables use the paper's VGGish feature space. For seen
-objects with the two high-dimensional encoders (PANNs 2048-d, PaSST 1295-d;
-488 clips, fewer than the embedding dimension) the set-level Fréchet values
-are numerically unstable; directions and the kernel distance are
-unaffected.</p>
-
-<p><b>Table 7a — object-level aggregation (as in the paper).</b></p>
-<table>
-<tr><th class="l" rowspan="2">Encoder</th><th class="l" rowspan="2">Distance</th>
-<th colspan="3">Seen objects (within)</th><th colspan="3">Unseen objects (held-out)</th></tr>
-<tr><th>run 1</th><th>run 2</th><th>run 3</th><th>run 1</th><th>run 2</th><th>run 3</th></tr>
-<tr><td class='l'>VGGish (paper's own pipeline)</td><td class='l'>Fréchet</td><td class='neg'>-19.3%</td><td class='neg'>-21.3%</td><td class='neg'>-24.1%</td><td class='neg'>-28.1%</td><td class='neg'>-26.8%</td><td class='neg'>-16.7%</td></tr>
-<tr><td class='l'>CLAP (paper's own pipeline)</td><td class='l'>Fréchet</td><td class='neg'>-22.9%</td><td class='neg'>-34.9%</td><td class='neg'>-46.4%</td><td class='neg'>-37.2%</td><td class='neg'>-49.1%</td><td class='neg'>-45.2%</td></tr>
-<tr><td class='l'>PANNs (Wavegram-LogMel) — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='neg'>-28.0%</td><td class='neg'>-35.9%</td><td class='neg'>-39.0%</td><td class='neg'>-31.8%</td><td class='neg'>-43.9%</td><td class='neg'>-43.1%</td></tr>
-<tr><td class='l'>PANNs (Wavegram-LogMel) — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='neg'>-37.5%</td><td class='neg'>-45.2%</td><td class='neg'>-46.6%</td><td class='neg'>-34.7%</td><td class='neg'>-43.6%</td><td class='neg'>-39.2%</td></tr>
-<tr><td class='l'>PaSST — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='neg'>-7.3%</td><td class='neg'>-23.0%</td><td class='neg'>-39.8%</td><td class='neg'>-17.6%</td><td class='neg'>-44.1%</td><td class='neg'>-30.2%</td></tr>
-<tr><td class='l'>PaSST — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='neg'>-11.8%</td><td class='neg'>-34.7%</td><td class='neg'>-51.1%</td><td class='neg'>-16.9%</td><td class='neg'>-43.4%</td><td class='neg'>-28.2%</td></tr>
-<tr><td class='l'>EnCodec — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='neg'>-7.4%</td><td class='pos'>+3.9%</td><td class='neg'>-23.4%</td><td class='neg'>-6.4%</td><td class='neg'>-24.9%</td><td class='neg'>-9.5%</td></tr>
-<tr><td class='l'>EnCodec — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='neg'>-11.1%</td><td class='neg'>-18.6%</td><td class='neg'>-42.7%</td><td class='neg'>-4.3%</td><td class='neg'>-17.3%</td><td class='neg'>-12.6%</td></tr>
-<tr><td class='l'>OpenL3 — toolchain embeddings, recomputed per object</td><td class='l'>Fréchet</td><td class='pos'>+2.3%</td><td>0.0%</td><td class='neg'>-3.8%</td><td class='neg'>-18.7%</td><td class='neg'>-13.3%</td><td class='neg'>-12.0%</td></tr>
-<tr><td class='l'>OpenL3 — toolchain embeddings, recomputed per object</td><td class='l'>kernel (KAD)</td><td class='pos'>+5.2%</td><td class='pos'>+2.9%</td><td class='neg'>-7.1%</td><td class='neg'>-20.7%</td><td class='neg'>-16.6%</td><td class='neg'>-9.2%</td></tr>
+<h3 id="controls">Controls on L4</h3>
+<p id="l4prime"><b>L4&prime;.</b> L4&prime; keeps identity and the frames of L4 and drops the peak and the descriptor. It is a
+control outside the four levels. For DDSP, dropping them lowers FAD on unseen objects (<i>d</i> = −0.85), and the
+change on seen objects is not detected. For the CVAE, FAD rises on both splits: +0.217 [+0.153, +0.279] on
+seen and +0.311 [+0.187, +0.439] on unseen objects. The CVAE encodes the force window into one global
+32-D code, so its L4&prime; result concerns that code.</p>
+<details>
+<summary>FAD of L4&prime; and its comparisons with L1, L3 and L4 (both generators)</summary>
+<table id="tab-l4prime-fad">
+<tr><th class="l">Generator</th><th class="l">Objects</th><th>L1</th><th>L3</th><th>L4</th><th>L4&prime;</th></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td>1.584</td><td>1.595</td><td>1.399</td><td>1.455</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td>2.267</td><td>1.879</td><td>1.815</td><td>1.519</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td>3.258</td><td>3.072</td><td>2.888</td><td>3.105</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td>3.283</td><td>3.342</td><td>3.020</td><td>3.330</td></tr>
 </table>
-
-<p><b>Table 7b — set-level aggregation (literature standard).</b></p>
-<table>
-<tr><th class="l" rowspan="2">Encoder</th><th class="l" rowspan="2">Distance</th>
-<th colspan="3">Seen objects (within)</th><th colspan="3">Unseen objects (held-out)</th></tr>
-<tr><th>run 1</th><th>run 2</th><th>run 3</th><th>run 1</th><th>run 2</th><th>run 3</th></tr>
-<tr><td class='l'>PANNs (Wavegram-LogMel)</td><td class='l'>Fréchet</td><td class='neg'>-42.5%</td><td class='neg'>-60.0%</td><td class='neg'>-61.5%</td><td class='neg'>-64.4%</td><td class='neg'>-75.8%</td><td class='neg'>-76.8%</td></tr>
-<tr><td class='l'>PANNs (Wavegram-LogMel)</td><td class='l'>kernel (KAD)</td><td class='neg'>-66.6%</td><td class='neg'>-72.9%</td><td class='neg'>-69.1%</td><td class='neg'>-63.7%</td><td class='neg'>-74.0%</td><td class='neg'>-73.5%</td></tr>
-<tr><td class='l'>PaSST</td><td class='l'>Fréchet</td><td class='pos'>+3.9%</td><td class='neg'>-38.0%</td><td class='neg'>-51.7%</td><td class='neg'>-30.1%</td><td class='neg'>-58.0%</td><td class='neg'>-40.2%</td></tr>
-<tr><td class='l'>PaSST</td><td class='l'>kernel (KAD)</td><td class='pos'>+4.3%</td><td class='neg'>-43.7%</td><td class='neg'>-51.0%</td><td class='neg'>-33.4%</td><td class='neg'>-59.6%</td><td class='neg'>-35.2%</td></tr>
-<tr><td class='l'>EnCodec</td><td class='l'>Fréchet</td><td class='neg'>-31.9%</td><td class='neg'>-8.4%</td><td class='neg'>-46.8%</td><td class='neg'>-41.0%</td><td class='neg'>-58.9%</td><td class='neg'>-56.8%</td></tr>
-<tr><td class='l'>EnCodec</td><td class='l'>kernel (KAD)</td><td class='neg'>-86.3%</td><td class='neg'>-67.8%</td><td class='neg'>-88.8%</td><td class='neg'>-19.9%</td><td class='neg'>-69.7%</td><td class='neg'>-38.0%</td></tr>
-<tr><td class='l'>OpenL3</td><td class='l'>Fréchet</td><td class='pos'>+3.7%</td><td class='neg'>-0.1%</td><td class='neg'>-7.6%</td><td class='neg'>-27.2%</td><td class='neg'>-20.9%</td><td class='neg'>-14.7%</td></tr>
-<tr><td class='l'>OpenL3</td><td class='l'>kernel (KAD)</td><td class='pos'>+34.2%</td><td class='pos'>+22.7%</td><td class='pos'>+14.1%</td><td class='neg'>-28.8%</td><td class='neg'>-30.0%</td><td class='neg'>-0.7%</td></tr>
+<table id="tab-l4prime-cmp">
+<tr><th class="l">Generator</th><th class="l">Objects</th><th class="l">Comparison</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td class='l'>L4&prime; − L4</td><td>+0.056</td><td>[−0.001, +0.113]</td><td>+0.19</td><td>0.056</td><td>0.056</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td class='l'>L4&prime; − L3</td><td>−0.141</td><td>[−0.202, −0.085]</td><td>−0.46</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>seen (100)</td><td class='l'>L4&prime; − L1</td><td>−0.129</td><td>[−0.180, −0.081]</td><td>−0.50</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td class='l'>L4&prime; − L4</td><td>−0.297</td><td>[−0.466, −0.127]</td><td>−0.85</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td class='l'>L4&prime; − L3</td><td>−0.361</td><td>[−0.541, −0.178]</td><td>−0.96</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>DDSP</td><td class='l'>unseen (17)</td><td class='l'>L4&prime; − L1</td><td>−0.749</td><td>[−0.957, −0.551]</td><td>−1.75</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td class='l'>L4&prime; − L4</td><td>+0.217</td><td>[+0.153, +0.279]</td><td>+0.66</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td class='l'>L4&prime; − L3</td><td>+0.034</td><td>[−0.024, +0.091]</td><td>+0.12</td><td>0.237</td><td>0.237</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>seen (100)</td><td class='l'>L4&prime; − L1</td><td>−0.153</td><td>[−0.227, −0.082]</td><td>−0.42</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td class='l'>L4&prime; − L4</td><td>+0.311</td><td>[+0.187, +0.439]</td><td>+1.08</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td class='l'>L4&prime; − L3</td><td>−0.012</td><td>[−0.083, +0.055]</td><td>−0.08</td><td>0.758</td><td>0.938</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>CVAE</td><td class='l'>unseen (17)</td><td class='l'>L4&prime; − L1</td><td>+0.047</td><td>[−0.081, +0.171]</td><td>+0.17</td><td>0.469</td><td>0.938</td><td class='l'>not detected</td></tr>
 </table>
+<p class="note">Object-level FAD (VGGish), test set, five-seed means; &Delta; = B − A (negative = B better); Holm over the three
+L4&prime; comparisons of each generator and split. Reading uses the Holm <i>p</i>.</p>
+</details>
 
-<p><b>Where the two aggregations disagree on whether a row is robust.</b></p>
-<ul>
-<li>PaSST, seen objects, Fréchet distance: object-level all three runs improve (-7%/-23%/-40%); set-level not all runs improve (+4%/-38%/-52%).</li>
-<li>PaSST, seen objects, kernel distance: object-level all three runs improve (-12%/-35%/-51%); set-level not all runs improve (+4%/-44%/-51%).</li>
-<li>EnCodec, seen objects, Fréchet distance: object-level not all runs improve (-7%/+4%/-23%); set-level all three runs improve (-32%/-8%/-47%). Under the kernel distance all runs improve at both levels.</li>
-</ul>
-<p class="note">In the other 13 of 16 toolchain cells (encoder × split × distance) the robust / not-robust outcome is the same under both aggregations. On unseen objects every toolchain cell is
-robust under both aggregations; the disagreements are all on seen objects,
-where the improvement is smaller.</p>
-<p><b>Caveats.</b></p>
-<ul>
-<li>OpenL3, seen objects: no robust improvement under either aggregation —
-the kernel distance is reversed at set level in all runs and in two of three
-runs at object level; the Fréchet distance is mixed under both.</li>
-<li>OpenL3, unseen objects, kernel distance: at set level one run improves
-only marginally (−0.7%); at object level the same run improves by ≈9%.</li>
-</ul>
-<p><b>Excluded.</b></p>
-<ul>
-<li>PANNs (CNN14): near-degenerate embeddings for 200&nbsp;ms clips — absolute
-distances sit on a ≈10⁻⁴ floor, so percentage changes carry no meaning; the
-encoder is excluded.</li>
-</ul>
+<p id="frameshuffle"><b>Frame shuffle.</b> At test time each strike receives the force window of another test strike of the
+same split; identity, peak and descriptor stay the strike's own. A reassignment draws the windows at random from all test
+strikes of the split, and no strike keeps its own. A reassigned window is still a real hammer pulse, so the shuffle removes
+only the strike-specific part of L4's gain. On seen objects both generators score worse in all ten reassignments, detected
+in 7 (DDSP) and 3 (CVAE). On unseen objects no difference is detected for either generator.</p>
+<table id="tab-shuffle">
+<tr><th class="l" rowspan="2">Reassignment</th><th colspan="2">DDSP</th><th colspan="2">CVAE</th></tr>
+<tr><th>seen (100)</th><th>unseen (17)</th><th>seen (100)</th><th>unseen (17)</th></tr>
+<tr><td class='l'>1</td><td>+0.040*</td><td>−0.017</td><td>+0.037*</td><td>+0.019</td></tr>
+<tr><td class='l'>2</td><td>+0.032*</td><td>−0.045</td><td>+0.014</td><td>+0.008</td></tr>
+<tr><td class='l'>3</td><td>+0.021</td><td>−0.027</td><td>+0.013</td><td>+0.012</td></tr>
+<tr><td class='l'>4</td><td>+0.029*</td><td>−0.008</td><td>+0.028</td><td>+0.017</td></tr>
+<tr><td class='l'>5</td><td>+0.032*</td><td>−0.012</td><td>+0.012</td><td>+0.025</td></tr>
+<tr><td class='l'>6</td><td>+0.021</td><td>−0.027</td><td>+0.016</td><td>+0.036</td></tr>
+<tr><td class='l'>7</td><td>+0.035*</td><td>−0.028</td><td>+0.039*</td><td>+0.031</td></tr>
+<tr><td class='l'>8</td><td>+0.025</td><td>−0.017</td><td>+0.025</td><td>+0.021</td></tr>
+<tr><td class='l'>9</td><td>+0.040*</td><td>−0.041</td><td>+0.016</td><td>+0.016</td></tr>
+<tr><td class='l'>10</td><td>+0.036*</td><td>−0.015</td><td>+0.030*</td><td>+0.027</td></tr>
+<tr><td class='l'>mean &plusmn; s.d.</td><td>+0.031 &plusmn; 0.007</td><td>−0.024 &plusmn; 0.012</td><td>+0.023 &plusmn; 0.010</td><td>+0.021 &plusmn; 0.009</td></tr>
+<tr><td class='l'>detected worse / better</td><td>7 / 0</td><td>0 / 0</td><td>3 / 0</td><td>0 / 0</td></tr>
+</table>
+<p class="note">&Delta; = FAD(shuffled) − FAD(correct), object-level FAD (VGGish), mean over objects of five L4 runs
+(positive = shuffle worse); *: detected, worse (paired bootstrap over objects, no Holm correction). In the DDSP columns,
+reassignment 1 is the frame-shuffle row of the summary table at the start of Section&nbsp;3.</p>
+<details>
+<summary>Confidence interval, <i>d</i> and <i>p</i> of each reassignment</summary>
+<p><b>DDSP, seen objects (488 test strikes).</b></p>
+<table id="tab-shuffle-ddsp-seen">
+<tr><th class="l">Reassignment</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>1</td><td>+0.040</td><td>[+0.016, +0.063]</td><td>+0.33</td><td>0.002</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>2</td><td>+0.032</td><td>[+0.005, +0.060]</td><td>+0.23</td><td>0.017</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>3</td><td>+0.021</td><td>[−0.002, +0.044]</td><td>+0.19</td><td>0.067</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>4</td><td>+0.029</td><td>[+0.004, +0.052]</td><td>+0.24</td><td>0.014</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>5</td><td>+0.032</td><td>[+0.009, +0.055]</td><td>+0.28</td><td>0.009</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>6</td><td>+0.021</td><td>[−0.002, +0.042]</td><td>+0.18</td><td>0.065</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>7</td><td>+0.035</td><td>[+0.008, +0.063]</td><td>+0.25</td><td>0.012</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>8</td><td>+0.025</td><td>[+0.000, +0.050]</td><td>+0.20</td><td>0.050</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>9</td><td>+0.040</td><td>[+0.015, +0.064]</td><td>+0.32</td><td>0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>10</td><td>+0.036</td><td>[+0.009, +0.061]</td><td>+0.28</td><td>0.009</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>across the ten</td><td colspan='5' class='l'>mean +0.031; s.d. 0.007; range +0.021 to +0.040; detected worse: 7; detected better: 0</td></tr>
+</table>
+<p><b>DDSP, unseen objects (308 test strikes).</b></p>
+<table id="tab-shuffle-ddsp-unseen">
+<tr><th class="l">Reassignment</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>1</td><td>−0.017</td><td>[−0.109, +0.082]</td><td>−0.08</td><td>0.688</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>2</td><td>−0.045</td><td>[−0.134, +0.051]</td><td>−0.22</td><td>0.364</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>3</td><td>−0.027</td><td>[−0.117, +0.074]</td><td>−0.13</td><td>0.544</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>4</td><td>−0.008</td><td>[−0.107, +0.100]</td><td>−0.04</td><td>0.842</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>5</td><td>−0.012</td><td>[−0.110, +0.090]</td><td>−0.06</td><td>0.765</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>6</td><td>−0.027</td><td>[−0.111, +0.064]</td><td>−0.14</td><td>0.546</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>7</td><td>−0.028</td><td>[−0.116, +0.062]</td><td>−0.14</td><td>0.510</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>8</td><td>−0.017</td><td>[−0.114, +0.089]</td><td>−0.08</td><td>0.680</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>9</td><td>−0.041</td><td>[−0.116, +0.040]</td><td>−0.24</td><td>0.299</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>10</td><td>−0.015</td><td>[−0.105, +0.096]</td><td>−0.07</td><td>0.688</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>across the ten</td><td colspan='5' class='l'>mean −0.024; s.d. 0.012; range −0.045 to −0.008; detected worse: 0; detected better: 0</td></tr>
+</table>
+<p><b>CVAE, seen objects (488 test strikes).</b></p>
+<table id="tab-shuffle-cvae-seen">
+<tr><th class="l">Reassignment</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>1</td><td>+0.037</td><td>[+0.008, +0.066]</td><td>+0.25</td><td>0.009</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>2</td><td>+0.014</td><td>[−0.015, +0.044]</td><td>+0.08</td><td>0.374</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>3</td><td>+0.013</td><td>[−0.015, +0.042]</td><td>+0.09</td><td>0.351</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>4</td><td>+0.028</td><td>[+0.000, +0.056]</td><td>+0.20</td><td>0.048</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>5</td><td>+0.012</td><td>[−0.018, +0.043]</td><td>+0.08</td><td>0.417</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>6</td><td>+0.016</td><td>[−0.012, +0.045]</td><td>+0.11</td><td>0.272</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>7</td><td>+0.039</td><td>[+0.007, +0.070]</td><td>+0.24</td><td>0.024</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>8</td><td>+0.025</td><td>[−0.002, +0.051]</td><td>+0.18</td><td>0.070</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>9</td><td>+0.016</td><td>[−0.016, +0.047]</td><td>+0.10</td><td>0.322</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>10</td><td>+0.030</td><td>[+0.002, +0.057]</td><td>+0.21</td><td>0.032</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>across the ten</td><td colspan='5' class='l'>mean +0.023; s.d. 0.010; range +0.012 to +0.039; detected worse: 3; detected better: 0</td></tr>
+</table>
+<p><b>CVAE, unseen objects (308 test strikes).</b></p>
+<table id="tab-shuffle-cvae-unseen">
+<tr><th class="l">Reassignment</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>1</td><td>+0.019</td><td>[−0.048, +0.088]</td><td>+0.13</td><td>0.636</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>2</td><td>+0.008</td><td>[−0.048, +0.062]</td><td>+0.07</td><td>0.781</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>3</td><td>+0.012</td><td>[−0.056, +0.076]</td><td>+0.08</td><td>0.740</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>4</td><td>+0.017</td><td>[−0.047, +0.088]</td><td>+0.12</td><td>0.660</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>5</td><td>+0.025</td><td>[−0.034, +0.085]</td><td>+0.19</td><td>0.434</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>6</td><td>+0.036</td><td>[−0.024, +0.105]</td><td>+0.26</td><td>0.278</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>7</td><td>+0.031</td><td>[−0.038, +0.092]</td><td>+0.22</td><td>0.358</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>8</td><td>+0.021</td><td>[−0.035, +0.075]</td><td>+0.18</td><td>0.474</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>9</td><td>+0.016</td><td>[−0.043, +0.081]</td><td>+0.12</td><td>0.650</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>10</td><td>+0.027</td><td>[−0.038, +0.096]</td><td>+0.18</td><td>0.462</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>across the ten</td><td colspan='5' class='l'>mean +0.021; s.d. 0.009; range +0.008 to +0.036; detected worse: 0; detected better: 0</td></tr>
+</table>
+<p class="note">&Delta; = FAD(shuffled) − FAD(correct), object-level FAD (VGGish), mean over objects of five L4 runs (positive =
+shuffle worse); paired bootstrap over objects, no Holm correction.</p>
+</details>
 
-<h2 id="signal">8&nbsp;· Signal-domain metrics (descriptive)</h2>
-<p>Reported without significance tests: the paper's envelope metric
-(L1 between log-mel energy envelopes) improves with force granularity
-(seen 0.0595 → 0.0565, unseen 0.1046 → 0.0930); per-clip
-log-spectral distance improves with granularity on unseen objects
+<p id="template"><b>Template pulse.</b> The template pulse replaces every measured window, in training and at test, by one
+fixed force curve: the average training pulse, scaled to the strike's own peak. Identity, peak and descriptor
+stay unchanged. Against L4 it raises FAD by 0.21 on seen and 0.13 on unseen objects, more than another
+strike's real pulse in the frame shuffle. On seen objects its differences from L3 and L1 are not detected. On unseen objects
+it is detected as worse than L3 and as better than L1.</p>
+<details>
+<summary>FAD of the template pulse and its comparisons with L4, L3, L1 and L4&prime;</summary>
+<p><b>Seen objects (100).</b></p>
+<table id="tab-template-fad-seen">
+<tr><th>template pulse</th><th>L4</th><th>L4&prime;</th><th>L3</th><th>L1</th></tr>
+<tr><td>1.611</td><td>1.399</td><td>1.455</td><td>1.595</td><td>1.584</td></tr>
+</table>
+<table id="tab-template-seen">
+<tr><th class="l">Comparison B − A</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>template pulse − L4</td><td>+0.212</td><td>[+0.167, +0.259]</td><td>+0.88</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>template pulse − L3</td><td>+0.015</td><td>[−0.019, +0.052]</td><td>+0.09</td><td>0.385</td><td>0.746</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>template pulse − L1</td><td>+0.027</td><td>[−0.031, +0.085]</td><td>+0.09</td><td>0.373</td><td>0.746</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>template pulse − L4&prime;</td><td>+0.156</td><td>[+0.098, +0.223]</td><td>+0.47</td><td>&lt;0.001</td><td>no Holm</td><td class='l'>detected, worse</td></tr>
+</table>
+<p><b>Unseen objects (17).</b></p>
+<table id="tab-template-fad-unseen">
+<tr><th>template pulse</th><th>L4</th><th>L4&prime;</th><th>L3</th><th>L1</th></tr>
+<tr><td>1.946</td><td>1.815</td><td>1.519</td><td>1.879</td><td>2.267</td></tr>
+</table>
+<table id="tab-template-unseen">
+<tr><th class="l">Comparison B − A</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>template pulse − L4</td><td>+0.131</td><td>[+0.044, +0.222]</td><td>+0.69</td><td>0.001</td><td>0.002</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>template pulse − L3</td><td>+0.067</td><td>[+0.025, +0.112]</td><td>+0.71</td><td>0.001</td><td>0.002</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>template pulse − L1</td><td>−0.322</td><td>[−0.428, −0.207]</td><td>−1.36</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>template pulse − L4&prime;</td><td>+0.427</td><td>[+0.250, +0.609]</td><td>+1.15</td><td>&lt;0.001</td><td>no Holm</td><td class='l'>detected, worse</td></tr>
+</table>
+<p class="note">Object-level FAD (VGGish), test set, five-seed means; &Delta; = B − A (negative = B better); Holm over the
+comparisons with L4, L3 and L1. Reading uses the Holm <i>p</i> where one is given.</p>
+</details>
+
+<p id="framerate"><b>Frames at 2&nbsp;ms and 6.7&nbsp;ms.</b> For DDSP, L4 pools the 200&nbsp;ms force window in blocks of 32 samples (0.67&nbsp;ms) into 300 frames
+with two channels, the root-mean-square and the maximum absolute value. The synthesiser also updates every 32 samples, so at L4
+each force frame spans one synthesis frame. These controls pool the same window in blocks of 96 or 320 samples instead. The window then has 100 or 30 frames, and each pooled value is held over
+3 or 10 synthesis frames. Each channel is z-scored with statistics computed for that block size. Identity, peak and
+descriptor are unchanged, and the change applies in training and at test.</p>
+<p>On seen objects both rates are detected as worse than L4 (+0.206 and +0.197). Neither
+difference from L3 is detected: +0.009 [−0.024, +0.044] at 2&nbsp;ms and 0.000 [−0.040, +0.038] at 6.7&nbsp;ms.
+On unseen objects frames at 2&nbsp;ms are detected as worse than L4 (+0.176) and than L3
+(+0.112 [+0.060, +0.166]). At 6.7&nbsp;ms neither difference is detected: +0.074
+[−0.017, +0.162] against L4 and +0.010 [−0.045, +0.063] against L3. On unseen objects both
+rates are still detected as better than L1.</p>
+<details>
+<summary>FAD of frames at 2&nbsp;ms and 6.7&nbsp;ms and all their comparisons</summary>
+<table id="tab-framerate-fad">
+<tr><th class="l">Objects</th><th>frames at 2&nbsp;ms</th><th>frames at 6.7&nbsp;ms</th><th>L4 (0.67&nbsp;ms)</th><th>L3</th><th>L1</th></tr>
+<tr><td class='l'>seen (100)</td><td>1.604</td><td>1.595</td><td>1.399</td><td>1.595</td><td>1.584</td></tr>
+<tr><td class='l'>unseen (17)</td><td>1.991</td><td>1.889</td><td>1.815</td><td>1.879</td><td>2.267</td></tr>
+</table>
+<table id="tab-framerate">
+<tr><th class="l" rowspan="2">Comparison B − A</th><th colspan="6">Seen objects (100)</th><th colspan="6">Unseen objects (17)</th></tr>
+<tr><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th>Holm <i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>frames at 2&nbsp;ms − L4</td><td>+0.206</td><td>[+0.157, +0.254]</td><td>+0.80</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.176</td><td>[+0.107, +0.251]</td><td>+1.14</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>frames at 2&nbsp;ms − L3</td><td>+0.009</td><td>[−0.024, +0.044]</td><td>+0.05</td><td>0.627</td><td>1.000</td><td class='l'>not detected</td><td>+0.112</td><td>[+0.060, +0.166]</td><td>+1.00</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>frames at 6.7&nbsp;ms − L4</td><td>+0.197</td><td>[+0.146, +0.249]</td><td>+0.74</td><td>&lt;0.001</td><td>&lt;0.001</td><td class='l'>detected, worse</td><td>+0.074</td><td>[−0.017, +0.162]</td><td>+0.39</td><td>0.104</td><td>0.208</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>frames at 6.7&nbsp;ms − L3</td><td>0.000</td><td>[−0.040, +0.038]</td><td>−0.00</td><td>0.993</td><td>1.000</td><td class='l'>not detected</td><td>+0.010</td><td>[−0.045, +0.063]</td><td>+0.09</td><td>0.697</td><td>0.697</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>frames at 2&nbsp;ms − L1</td><td>+0.021</td><td>[−0.037, +0.077]</td><td>+0.07</td><td>0.470</td><td>&ndash;</td><td class='l'>not detected</td><td>−0.276</td><td>[−0.402, −0.144]</td><td>−1.00</td><td>&lt;0.001</td><td>&ndash;</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>frames at 6.7&nbsp;ms − L1</td><td>+0.012</td><td>[−0.048, +0.070]</td><td>+0.04</td><td>0.693</td><td>&ndash;</td><td class='l'>not detected</td><td>−0.378</td><td>[−0.510, −0.253]</td><td>−1.36</td><td>&lt;0.001</td><td>&ndash;</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>frames at 2&nbsp;ms − frames at 6.7&nbsp;ms</td><td>+0.009</td><td>[−0.029, +0.047]</td><td>+0.05</td><td>0.651</td><td>&ndash;</td><td class='l'>not detected</td><td>+0.102</td><td>[+0.038, +0.166]</td><td>+0.75</td><td>0.002</td><td>&ndash;</td><td class='l'>detected, worse</td></tr>
+</table>
+<p class="note">Object-level FAD (VGGish), test set, five-seed means; &Delta; = B − A (negative = B better); paired
+bootstrap over objects. Holm <i>p</i> covers the four comparisons with L4 and L3 of each split; the comparisons with L1 and
+between the two rates have no Holm correction. Reading uses the Holm <i>p</i> where one is given.</p>
+</details>
+
+<p id="oracle"><b>Resonance oracle and shuffled resonance oracle.</b> The resonance oracle adds the object's eight strongest
+resonance frequencies, fitted from all of its recordings, test included, in training and at test. It is an upper bound on what
+resonances add. The shuffled resonance oracle adds another object's, which tests whether the true ones matter. On seen objects
+the resonance oracle helps (<i>d</i> = −0.47), and the shuffled one helps less (<i>d</i> = −0.26). On unseen objects both are
+detected as worse, in all three runs.</p>
+<details>
+<summary>FAD of the oracles and of L4 with the same seeds</summary>
+<table id="tab-oracle">
+<tr><th class="l">Objects</th><th class="l">Comparison B − A</th><th>FAD B</th><th>FAD A</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>seen (100)</td><td class='l'>resonance oracle − L4</td><td>1.442</td><td>1.551</td><td>−0.108</td><td>[−0.155, −0.064]</td><td>−0.47</td><td>&lt;0.001</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>seen (100)</td><td class='l'>shuffled resonance oracle − L4</td><td>1.492</td><td>1.551</td><td>−0.058</td><td>[−0.104, −0.014]</td><td>−0.26</td><td>0.013</td><td class='l'>detected, better</td></tr>
+<tr><td class='l'>unseen (17)</td><td class='l'>resonance oracle − L4</td><td>1.986</td><td>1.813</td><td>+0.173</td><td>[+0.043, +0.299]</td><td>+0.63</td><td>0.005</td><td class='l'>detected, worse</td></tr>
+<tr><td class='l'>unseen (17)</td><td class='l'>shuffled resonance oracle − L4</td><td>2.051</td><td>1.813</td><td>+0.238</td><td>[+0.036, +0.484]</td><td>+0.47</td><td>0.013</td><td class='l'>detected, worse</td></tr>
+</table>
+<p class="note">Object-level FAD (VGGish), test set; B and A are means over the same three seeds, L4 included; &Delta; = B − A
+(negative = B better); paired bootstrap over objects, no Holm correction.</p>
+</details>
+
+<h3 id="training">Training variants</h3>
+<p>Pretraining trains on synthetic noise bursts, then fine-tunes on the real data; the envelope loss adds an envelope
+&#8467;<sub>1</sub> term to the loss. Of the two training variants, pretraining gives the larger improvement over L4 and is
+detected as better on both splits. Against the five L4 runs the envelope loss is not detected on either split. L4 runs
+1&ndash;3 share the envelope-loss seeds and average 1.551 on seen objects (1.40 over all five runs). Against these
+three runs, the envelope loss is detected as better on seen objects: −0.124 [−0.203, −0.050], <i>d</i> = −0.32,
+<i>p</i> &lt;0.001.</p>
+<p><b>Envelope loss.</b> The envelope loss targets a ringing artefact. On unseen objects the generated decay tail comes out
+as sustained broadband noise instead of the recording's tonal modal decay (Section&nbsp;7, Figure&nbsp;B, bottom). The
+multi-resolution short-time Fourier transform loss changes little with decay shape. Disabling the modal branch of the DDSP
+generator (the 32 damped sinusoids that carry the resonant tail) changes the best validation loss by about 1%, and the ringing artefact persists. The envelope &#8467;<sub>1</sub>
+term has weight 8.8, chosen from a validation sweep; both splits use this weight and the three seeds 42–44. Adding the term
+raises the validation loss on unseen objects by 6.7%. Two of the three seen-object runs and all three unseen-object runs
+have a lower validation FAD than the L4 run of the same seed. The tail-energy index is the mean root-mean-square envelope over the
+100–200&nbsp;ms tail of the 200&nbsp;ms window, divided by the envelope peak. On unseen-object test clips the index is 0.09
+for L4 and 0.10 with the envelope loss; real recordings give 0.11.</p>
+<details>
+<summary>Validation FAD of each envelope-loss run</summary>
+<table id="tab-envloss-val">
+<tr><th class="l">Objects</th><th class="l">Run</th><th>L4</th><th>L4 + envelope loss</th><th>&Delta;</th><th class="l">below L4</th></tr>
+<tr><td class='l'>seen (100)</td><td class='l'>run 1</td><td>1.525</td><td>1.442</td><td>−0.083</td><td class='l'>yes</td></tr>
+<tr><td class='l'>seen (100)</td><td class='l'>run 2</td><td>1.422</td><td>1.481</td><td>+0.059</td><td class='l'>no</td></tr>
+<tr><td class='l'>seen (100)</td><td class='l'>run 3</td><td>1.574</td><td>1.323</td><td>−0.250</td><td class='l'>yes</td></tr>
+<tr><td class='l'>unseen (17)</td><td class='l'>run 1</td><td>1.751</td><td>1.602</td><td>−0.149</td><td class='l'>yes</td></tr>
+<tr><td class='l'>unseen (17)</td><td class='l'>run 2</td><td>1.721</td><td>1.597</td><td>−0.124</td><td class='l'>yes</td></tr>
+<tr><td class='l'>unseen (17)</td><td class='l'>run 3</td><td>1.889</td><td>1.742</td><td>−0.147</td><td class='l'>yes</td></tr>
+</table>
+<p class="note">DDSP, object-level FAD (VGGish), validation set; runs 1&ndash;3 are seeds 42&ndash;44, and each envelope-loss run is
+compared with the L4 run of the same seed; &Delta; = envelope loss − L4 (negative = envelope loss better).</p>
+</details>
+<p><b>Pretraining.</b> The synthetic corpus consists of random decaying noise bursts convolved with 2,000 simulated room
+impulse responses, with the burst as the force input. On the validation set, FAD after fine-tuning on real data is 19–24%
+(seen) and 17–28% (unseen) lower than for L4 of the same seed. Without fine-tuning, the pretrained model has FAD 4.20 on
+unseen validation objects, above every DDSP system, so training on the synthetic corpus alone does not produce the
+improvement.</p>
+
+<h2 id="refs">4&nbsp;· Baselines (test set)</h2>
+<p id="refs-test"><b>Test set.</b> White noise gives the FAD of an uninformative output. Modal synthesis fits up to 48 damped sinusoids per training object to its recordings, with
+the open-source SAMPLE package and ridge least squares, and the measured force excites them. On unseen objects, which have no fitted sinusoids, it uses one set combined from the
+training objects of the same material. Retrieval, which the paper's Table&nbsp;1 does not list, returns the training recording whose force window is closest
+to the test strike's in cosine similarity. On unseen objects it can only return another object's recording and still has
+lower FAD than every DDSP system below. FAD scores recorded audio well even for the wrong object, so this page uses it only
+to rank generated outputs against each other. Section&nbsp;6 shows which acoustic properties the levels change. Modal synthesis scores worse than every learned DDSP level on
+seen objects; on unseen objects its difference from L4 is not detected.</p>
+<table id="tab-refs-test">
+<tr><th class="l">System</th><th>Seen objects</th><th>Unseen objects</th></tr>
+<tr><td class='l'>White noise</td><td>5.60 &plusmn; 1.38</td><td>4.95 &plusmn; 0.68</td></tr>
+<tr><td class='l'>Modal synthesis</td><td>2.08</td><td>1.87</td></tr>
+<tr><td class='l'>Retrieval</td><td>1.27</td><td>1.00</td></tr>
+<tr><td class='l'>DDSP, L4 (five runs)</td><td>1.40 &plusmn; 0.70</td><td>1.82 &plusmn; 0.48</td></tr>
+<tr><td class='l'>DDSP, L4 + pretraining (three runs)</td><td>1.20 &plusmn; 0.59</td><td>1.41 &plusmn; 0.50</td></tr>
+<tr><td class='l'>DDSP, L4 + envelope loss (three runs)</td><td>1.43</td><td>1.67</td></tr>
+</table>
+<table id="tab-refs-cmp">
+<tr><th class="l">Objects</th><th class="l">Comparison B − A</th><th>&Delta;</th><th>95% CI</th><th><i>d</i></th><th><i>p</i></th><th class="l">Reading</th></tr>
+<tr><td class='l'>unseen (17)</td><td class='l'>modal synthesis − L4</td><td>+0.056</td><td>[−0.299, +0.435]</td><td>+0.07</td><td>0.819</td><td class='l'>not detected</td></tr>
+<tr><td class='l'>seen (100)</td><td class='l'>L4 + pretraining − retrieval</td><td>−0.070</td><td>[−0.189, +0.056]</td><td>−0.11</td><td>0.278</td><td class='l'>not detected</td></tr>
+</table>
+<p class="note">Object-level FAD (VGGish), test set, DDSP scale; &plusmn; s.d. across objects where given; &Delta; = B − A
+(negative = B better); paired bootstrap over objects, no Holm correction. All learned systems take L4 as input. Like the
+learned models, modal synthesis uses the recordings and the measured force and no object geometry.</p>
+
+<h2 id="encoders">5&nbsp;· Encoder robustness of the pretraining comparison (test set)</h2>
+
+<p>Each row compares the pretrained DDSP model with the L4 model of the same seed. VGGish, PANNs CNN14 and
+CLAP use the paper's own pipeline; PANNs Wavegram-Logmel, PaSST, EnCodec, OpenL3 and a second PANNs CNN14 use the
+<a href="https://github.com/YoonjinXD/kadtk">kadtk</a> toolchain. Distances are Fr&eacute;chet Audio Distance (FAD) and Kernel Audio Distance (KAD). The object-level aggregation averages per-object distances as in the paper; the set-level aggregation uses
+all clips of the split. A row is robust when all three changes are negative.</p>
+<p>The pretraining gain is robust in 29 of the 38 rows; the four kadtk PANNs CNN14 rows are excluded from this count
+(near-degenerate embeddings for 200&nbsp;ms clips). Two rows read differently on the validation set. Seen-object PANNs CNN14 (own pipeline, FAD, object level) is robust on test and not on validation; unseen-object OpenL3 (KAD, set level) is robust on validation and not on test.</p>
+<table id="tab-encoders">
+<tr><th class="l">Objects</th><th class="l">Encoder</th><th class="l">Pipeline</th><th class="l">Distance</th><th class="l">Aggregation</th><th>run 1</th><th>run 2</th><th>run 3</th><th class="l">Reading</th></tr>
+<tr><td class='l'>seen</td><td class='l'>VGGish</td><td class='l'>own pipeline</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−15.4%</td><td class='neg'>−24.0%</td><td class='neg'>−28.0%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>own pipeline</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−25.2%</td><td class='neg'>−21.2%</td><td class='neg'>−3.6%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>CLAP</td><td class='l'>own pipeline</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−22.3%</td><td class='neg'>−38.2%</td><td class='neg'>−48.6%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−43.5%</td><td class='neg'>−60.6%</td><td class='neg'>−61.8%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−26.7%</td><td class='neg'>−38.8%</td><td class='neg'>−40.0%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−63.2%</td><td class='neg'>−70.8%</td><td class='neg'>−68.6%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−32.2%</td><td class='neg'>−46.1%</td><td class='neg'>−46.8%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='pos'>+4.8%</td><td class='neg'>−35.6%</td><td class='neg'>−48.7%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−7.2%</td><td class='neg'>−22.3%</td><td class='neg'>−39.3%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='pos'>+7.8%</td><td class='neg'>−36.7%</td><td class='neg'>−44.3%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−8.2%</td><td class='neg'>−33.4%</td><td class='neg'>−50.3%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−12.3%</td><td class='neg'>−32.7%</td><td class='neg'>−45.7%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−9.3%</td><td class='neg'>−3.5%</td><td class='pos'>+3.7%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−79.1%</td><td class='neg'>−81.0%</td><td class='neg'>−88.0%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−12.6%</td><td class='neg'>−18.1%</td><td class='neg'>−24.0%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='pos'>+4.4%</td><td class='pos'>+0.4%</td><td class='neg'>−7.8%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='pos'>+3.9%</td><td class='pos'>+0.2%</td><td class='neg'>−4.7%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='pos'>+36.3%</td><td class='pos'>+24.2%</td><td class='pos'>+14.4%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='pos'>+7.3%</td><td class='pos'>+4.4%</td><td class='neg'>−7.4%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−14.4%</td><td class='neg'>−4.9%</td><td class='pos'>+12.3%</td><td class='l'>excluded from the reading</td></tr>
+<tr><td class='l'>seen</td><td class='l'>PANNs CNN14</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−10.6%</td><td class='pos'>+15.8%</td><td class='pos'>+19.5%</td><td class='l'>excluded from the reading</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>VGGish</td><td class='l'>own pipeline</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−26.0%</td><td class='neg'>−25.3%</td><td class='neg'>−16.2%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>own pipeline</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−27.2%</td><td class='pos'>+30.3%</td><td class='neg'>−42.1%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>CLAP</td><td class='l'>own pipeline</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−37.4%</td><td class='neg'>−48.2%</td><td class='neg'>−43.4%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−63.2%</td><td class='neg'>−76.3%</td><td class='neg'>−77.8%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−30.0%</td><td class='neg'>−45.4%</td><td class='neg'>−44.4%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−60.3%</td><td class='neg'>−72.6%</td><td class='neg'>−73.8%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs Wavegram-Logmel</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−31.7%</td><td class='neg'>−44.2%</td><td class='neg'>−40.0%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−33.3%</td><td class='neg'>−57.8%</td><td class='neg'>−41.1%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−19.4%</td><td class='neg'>−43.0%</td><td class='neg'>−30.1%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−34.0%</td><td class='neg'>−60.1%</td><td class='neg'>−33.2%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PaSST</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−17.4%</td><td class='neg'>−41.4%</td><td class='neg'>−27.3%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−37.6%</td><td class='neg'>−69.1%</td><td class='neg'>−41.3%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−3.6%</td><td class='neg'>−31.8%</td><td class='neg'>−6.8%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−11.7%</td><td class='neg'>−72.1%</td><td class='neg'>−36.5%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>EnCodec</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−0.3%</td><td class='neg'>−20.6%</td><td class='neg'>−8.5%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='neg'>−28.2%</td><td class='neg'>−20.2%</td><td class='neg'>−15.6%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>object level</td><td class='neg'>−19.4%</td><td class='neg'>−12.9%</td><td class='neg'>−12.3%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='neg'>−28.2%</td><td class='neg'>−27.5%</td><td class='pos'>+0.1%</td><td class='l'>not robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>OpenL3</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>object level</td><td class='neg'>−21.4%</td><td class='neg'>−15.7%</td><td class='neg'>−9.7%</td><td class='l'>robust</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>toolchain</td><td class='l'>FAD</td><td class='l'>set level</td><td class='pos'>+174.7%</td><td class='pos'>+6678.8%</td><td class='neg'>−48.9%</td><td class='l'>excluded from the reading</td></tr>
+<tr><td class='l'>unseen</td><td class='l'>PANNs CNN14</td><td class='l'>toolchain</td><td class='l'>KAD</td><td class='l'>set level</td><td class='pos'>+365.8%</td><td class='pos'>+7122.2%</td><td class='neg'>−19.4%</td><td class='l'>excluded from the reading</td></tr>
+</table>
+<p class="note">Percentage change from the same-seed L4 model to the pretrained model (negative = lower distance). With
+4&ndash;10 (seen) or 15&ndash;25 (unseen) clips per object, per-object distances contain a small-sample floor, so object-level percentage changes are smaller. On the validation set that floor is &asymp;27% of the L4 score at object level and &asymp;8% at set level
+(unseen objects, run 1). On seen objects the set-level FAD values of PANNs Wavegram-Logmel (2048-d) and PaSST (1295-d)
+are numerically unstable (488 clips, fewer than the embedding dimension); KAD is unaffected.</p>
+
+<h2 id="signal">6&nbsp;· Signal-domain metrics (descriptive)</h2>
+<p>From L1 to L4 (DDSP, no significance tests), the &#8467;<sub>1</sub> distance
+between log-mel energy envelopes improves
+(seen 0.0595 → 0.0565, unseen 0.1046 → 0.0930). Per-clip
+log-spectral distance improves on unseen objects
 (11.65 → 10.12 dB) and is slightly worse on seen objects (6.98 → 7.13 dB).
-The "envelope shape" column in the tables below is a different quantity —
-L1 between peak-normalised loudness envelopes — so the two are not
-comparable.</p>
+The "envelope shape" column below is a different measure, the envelope-shape distance of the
+paper's Table&nbsp;3.</p>
 
 <h3>Per-clip descriptor differences</h3>
-<p><b>How to read these tables.</b> For every test clip we compute a set of
-standard audio descriptors on the real recording and on the generated version,
-and report the absolute difference, averaged per object and then over objects
-(the same aggregation as the FAD tables); mean ± SD across the five training
-runs. All signals are peak-normalised per clip first, so every column is
-independent of loudness. Lower = the generated clip's descriptor is closer to
-the real one. The descriptors: spectral centroid and bandwidth describe where
-the energy sits and how spread it is; spectral flatness and contrast describe
-how tone-like versus noise-like the spectrum is (a proxy for harmonic
-structure); the MFCC distance summarises overall timbre (coefficients 1–13,
-loudness coefficient excluded); envelope shape is the L1 distance between the
-peak-normalised loudness envelopes; T20 is the time for the envelope to fall
-20 dB below its peak, and the column shows the difference in that decay time.
-The <i>real vs real</i> row is the floor: two random halves of the same
-object's real strikes compared the same way — differences at or below this row
-are indistinguishable from natural strike-to-strike variability.</p>
+<p><b>How to read these tables.</b> For every test clip we compute standard audio descriptors on the real recording and on
+the generated version. Each cell is the absolute difference, averaged per object and then over objects, as mean ± s.d.
+across the five training runs (<i>real vs real</i> row: across ten random splits). All signals are peak-normalised per clip first, so no column depends on loudness. Lower
+means the generated clip is closer to the real one. Spectral centroid and bandwidth describe where the energy sits and how
+spread it is. Spectral flatness and contrast describe how tone-like or noise-like the spectrum is. The MFCC distance
+summarises overall timbre (coefficients 1–13, loudness coefficient excluded). Envelope shape is the &#8467;<sub>1</sub>
+distance between the peak-normalised loudness envelopes. T20 is the time for the envelope to fall 20 dB below its peak,
+and the column shows the difference in that decay time. The <i>real vs real</i> row is the floor. The object's real test strikes are split at random into two halves and paired
+one to one, over ten random splits. Differences at or below this row are within
+natural strike-to-strike variability.</p>
 <p><b>DDSP generator.</b> On seen objects the differences sit at or below the
-real-vs-real floor for most descriptors and barely change across conditioning
-levels. On unseen objects every descriptor sits above the floor at L1 and
-moves toward it as force information is added — spectral centroid 1,603 → 1,156 Hz
-(floor 914), MFCC distance 48 → 42 (floor 28), decay-time difference
-39 → 33 ms (floor 33) — except spectral flatness, which stays at ≈4.4 dB
-against a floor of 2.5 dB at every level: the tone-versus-noise character of
-an unseen object is the one descriptor that force information does not
-improve.</p>
-<p><b>Seen objects (within)</b> (488 clips, 100 objects).</p><table><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (L1)</th><th>decay time T20 (ms)</th></tr><tr><td class='l'>L1 identity only</td><td>684 ± 4.7</td><td>565 ± 7.8</td><td>2.76 ± 0.11</td><td>1.64 ± 0.068</td><td>21.4 ± 0.24</td><td>0.0968 ± 0.00083</td><td>25.9 ± 0.47</td></tr><tr><td class='l'>L2 + peak-force scalar</td><td>695 ± 21</td><td>587 ± 8.7</td><td>2.65 ± 0.094</td><td>1.69 ± 0.077</td><td>21.9 ± 0.23</td><td>0.0961 ± 0.001</td><td>27.5 ± 0.67</td></tr><tr><td class='l'>L3 + 6-D descriptor</td><td>766 ± 25</td><td>626 ± 33</td><td>2.68 ± 0.058</td><td>1.82 ± 0.11</td><td>23.4 ± 0.62</td><td>0.101 ± 0.0027</td><td>31.2 ± 2</td></tr><tr><td class='l'>L4 + force frames</td><td>800 ± 66</td><td>679 ± 110</td><td>2.78 ± 0.26</td><td>1.62 ± 0.15</td><td>22.4 ± 0.7</td><td>0.096 ± 0.0034</td><td>26.6 ± 3.1</td></tr><tr><td class='l'><i>Real vs real (split-half floor)</i></td><td><i>875 ± 44</i></td><td><i>599 ± 26</i></td><td><i>2.98 ± 0.085</i></td><td><i>1.22 ± 0.045</i></td><td><i>25.8 ± 0.53</i></td><td><i>0.118 ± 0.0028</i></td><td><i>29.2 ± 0.8</i></td></tr></table>
-<p><b>Unseen objects (held-out)</b> (308 clips, 17 objects).</p><table><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (L1)</th><th>decay time T20 (ms)</th></tr><tr><td class='l'>L1 identity only</td><td>1,603 ± 31</td><td>1,412 ± 49</td><td>4.41 ± 0.3</td><td>5.17 ± 0.1</td><td>48.4 ± 0.17</td><td>0.112 ± 0.0041</td><td>39.3 ± 2.3</td></tr><tr><td class='l'>L2 + peak-force scalar</td><td>1,315 ± 54</td><td>1,366 ± 78</td><td>4.97 ± 0.099</td><td>4.94 ± 0.051</td><td>45.9 ± 0.48</td><td>0.115 ± 0.0052</td><td>35.2 ± 3</td></tr><tr><td class='l'>L3 + 6-D descriptor</td><td>1,161 ± 34</td><td>1,016 ± 100</td><td>4.6 ± 0.31</td><td>4.66 ± 0.15</td><td>43.5 ± 0.57</td><td>0.117 ± 0.008</td><td>36 ± 4</td></tr><tr><td class='l'>L4 + force frames</td><td>1,156 ± 37</td><td>946 ± 49</td><td>4.4 ± 0.23</td><td>4.48 ± 0.13</td><td>41.5 ± 0.51</td><td>0.104 ± 0.0024</td><td>32.7 ± 1</td></tr><tr><td class='l'><i>Real vs real (split-half floor)</i></td><td><i>914 ± 64</i></td><td><i>611 ± 22</i></td><td><i>2.54 ± 0.11</i></td><td><i>1.24 ± 0.055</i></td><td><i>27.8 ± 0.53</i></td><td><i>0.103 ± 0.0044</i></td><td><i>32.6 ± 2.6</i></td></tr></table>
+real-vs-real floor for most descriptors; the centroid and bandwidth differences grow from L1 to L4.
+On unseen objects every descriptor sits above the floor at L1. From L1 to L4, spectral centroid goes from
+1,603 Hz to 1,156 Hz
+(floor 914), MFCC distance from 48.4 to
+41.5 (floor 27.8). The decay-time difference goes from
+39.3 to 32.7 ms (floor 32.6), and envelope shape reaches the floor at L4.
+Spectral flatness, the tone-versus-noise character of the sound, does not
+improve at any level. It is 4.41 dB at L1,
+4.97 at L2, 4.60 at L3 and
+4.40 at L4, against a floor of 2.54 dB.</p>
+<p><b>DDSP, seen objects</b> (488 clips, 100 objects).</p>
+<table id="tab-signal-ddsp-seen"><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (&#8467;<sub>1</sub>)</th><th>decay time T20 (ms)</th></tr>
+<tr><td class='l'>L1 (identity)</td><td>684 &plusmn; 4.7</td><td>565 &plusmn; 7.8</td><td>2.76 &plusmn; 0.111</td><td>1.64 &plusmn; 0.068</td><td>21.4 &plusmn; 0.24</td><td>0.097 &plusmn; 0.0008</td><td>25.9 &plusmn; 0.47</td></tr>
+<tr><td class='l'>L2 (peak)</td><td>695 &plusmn; 20.9</td><td>587 &plusmn; 8.7</td><td>2.65 &plusmn; 0.094</td><td>1.69 &plusmn; 0.077</td><td>21.9 &plusmn; 0.23</td><td>0.096 &plusmn; 0.0010</td><td>27.5 &plusmn; 0.67</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>766 &plusmn; 25.4</td><td>626 &plusmn; 33.0</td><td>2.68 &plusmn; 0.058</td><td>1.82 &plusmn; 0.106</td><td>23.4 &plusmn; 0.62</td><td>0.101 &plusmn; 0.0027</td><td>31.2 &plusmn; 2.04</td></tr>
+<tr><td class='l'>windowed descriptor</td><td>734 &plusmn; 18.6</td><td>577 &plusmn; 12.7</td><td>2.53 &plusmn; 0.086</td><td>1.77 &plusmn; 0.050</td><td>22.9 &plusmn; 0.38</td><td>0.099 &plusmn; 0.0027</td><td>31.1 &plusmn; 1.72</td></tr>
+<tr><td class='l'>L4 (frames)</td><td>800 &plusmn; 66.4</td><td>679 &plusmn; 111.6</td><td>2.78 &plusmn; 0.257</td><td>1.62 &plusmn; 0.149</td><td>22.4 &plusmn; 0.70</td><td>0.096 &plusmn; 0.0034</td><td>26.6 &plusmn; 3.11</td></tr>
+<tr><td class='l'><i>Real vs real (split-half floor)</i></td><td><i>875 &plusmn; 43.8</i></td><td><i>599 &plusmn; 26.2</i></td><td><i>2.98 &plusmn; 0.085</i></td><td><i>1.22 &plusmn; 0.045</i></td><td><i>25.8 &plusmn; 0.53</i></td><td><i>0.118 &plusmn; 0.0028</i></td><td><i>29.2 &plusmn; 0.80</i></td></tr>
+</table>
+<p><b>DDSP, unseen objects</b> (308 clips, 17 objects).</p>
+<table id="tab-signal-ddsp-unseen"><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (&#8467;<sub>1</sub>)</th><th>decay time T20 (ms)</th></tr>
+<tr><td class='l'>L1 (identity)</td><td>1,603 &plusmn; 30.8</td><td>1,412 &plusmn; 49.2</td><td>4.41 &plusmn; 0.299</td><td>5.17 &plusmn; 0.103</td><td>48.4 &plusmn; 0.17</td><td>0.112 &plusmn; 0.0041</td><td>39.3 &plusmn; 2.29</td></tr>
+<tr><td class='l'>L2 (peak)</td><td>1,315 &plusmn; 54.2</td><td>1,366 &plusmn; 78.5</td><td>4.97 &plusmn; 0.099</td><td>4.94 &plusmn; 0.051</td><td>45.9 &plusmn; 0.48</td><td>0.115 &plusmn; 0.0052</td><td>35.2 &plusmn; 2.97</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>1,161 &plusmn; 34.1</td><td>1,016 &plusmn; 103.3</td><td>4.60 &plusmn; 0.312</td><td>4.66 &plusmn; 0.153</td><td>43.5 &plusmn; 0.57</td><td>0.117 &plusmn; 0.0080</td><td>36.0 &plusmn; 3.95</td></tr>
+<tr><td class='l'>windowed descriptor</td><td>1,201 &plusmn; 68.7</td><td>1,077 &plusmn; 103.2</td><td>4.77 &plusmn; 0.315</td><td>4.74 &plusmn; 0.219</td><td>42.4 &plusmn; 0.51</td><td>0.104 &plusmn; 0.0035</td><td>32.4 &plusmn; 1.93</td></tr>
+<tr><td class='l'>L4 (frames)</td><td>1,156 &plusmn; 36.8</td><td>946 &plusmn; 49.4</td><td>4.40 &plusmn; 0.226</td><td>4.48 &plusmn; 0.125</td><td>41.5 &plusmn; 0.51</td><td>0.104 &plusmn; 0.0024</td><td>32.7 &plusmn; 1.02</td></tr>
+<tr><td class='l'><i>Real vs real (split-half floor)</i></td><td><i>914 &plusmn; 64.5</i></td><td><i>611 &plusmn; 21.9</i></td><td><i>2.54 &plusmn; 0.106</i></td><td><i>1.24 &plusmn; 0.055</i></td><td><i>27.8 &plusmn; 0.53</i></td><td><i>0.103 &plusmn; 0.0044</i></td><td><i>32.6 &plusmn; 2.59</i></td></tr>
+</table>
 <p><b>Mel-spectrogram CVAE.</b> Both real and generated clips pass through the
-same mel inversion (the evaluation convention for this model), and the
+same Griffin&ndash;Lim reconstruction from mel spectrograms, and the
 real-vs-real floor above is computed on raw recordings, so the floor is only
-an approximate reference here. The CVAE sits far above the DDSP generator on
-every descriptor, with much larger run-to-run spread; its per-level tables
-are not shown.</p>
+an approximate reference here.</p>
+<details>
+<summary>CVAE tables (seen and unseen objects)</summary>
+<p><b>CVAE, seen objects</b> (488 clips, 100 objects).</p>
+<table id="tab-signal-cvae-seen"><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (&#8467;<sub>1</sub>)</th><th>decay time T20 (ms)</th></tr>
+<tr><td class='l'>L1 (identity)</td><td>2,569 &plusmn; 444.8</td><td>1,370 &plusmn; 138.0</td><td>8.42 &plusmn; 1.524</td><td>2.67 &plusmn; 0.236</td><td>41.5 &plusmn; 0.85</td><td>0.108 &plusmn; 0.0358</td><td>59.8 &plusmn; 40.73</td></tr>
+<tr><td class='l'>L2 (peak)</td><td>2,688 &plusmn; 539.6</td><td>1,342 &plusmn; 145.5</td><td>8.62 &plusmn; 1.820</td><td>2.60 &plusmn; 0.161</td><td>43.2 &plusmn; 2.42</td><td>0.088 &plusmn; 0.0025</td><td>38.8 &plusmn; 10.70</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>2,421 &plusmn; 886.1</td><td>1,261 &plusmn; 235.4</td><td>7.69 &plusmn; 2.216</td><td>2.68 &plusmn; 0.239</td><td>43.1 &plusmn; 1.96</td><td>0.120 &plusmn; 0.0554</td><td>61.2 &plusmn; 34.69</td></tr>
+<tr><td class='l'>L4 (frames)</td><td>2,305 &plusmn; 799.1</td><td>1,185 &plusmn; 227.3</td><td>7.31 &plusmn; 2.088</td><td>2.60 &plusmn; 0.186</td><td>42.1 &plusmn; 1.58</td><td>0.093 &plusmn; 0.0239</td><td>43.1 &plusmn; 37.07</td></tr>
+</table>
+<p><b>CVAE, unseen objects</b> (308 clips, 17 objects).</p>
+<table id="tab-signal-cvae-unseen"><tr><th class='l'>Force conditioning</th><th>spectral centroid (Hz)</th><th>spectral bandwidth (Hz)</th><th>spectral flatness (dB)</th><th>spectral contrast (dB)</th><th>MFCC distance</th><th>envelope shape (&#8467;<sub>1</sub>)</th><th>decay time T20 (ms)</th></tr>
+<tr><td class='l'>L1 (identity)</td><td>3,659 &plusmn; 560.3</td><td>1,583 &plusmn; 301.0</td><td>9.73 &plusmn; 1.563</td><td>2.84 &plusmn; 0.294</td><td>53.4 &plusmn; 1.43</td><td>0.097 &plusmn; 0.0125</td><td>41.7 &plusmn; 18.38</td></tr>
+<tr><td class='l'>L2 (peak)</td><td>2,935 &plusmn; 590.2</td><td>1,583 &plusmn; 228.3</td><td>8.03 &plusmn; 2.475</td><td>3.02 &plusmn; 0.900</td><td>54.3 &plusmn; 8.49</td><td>0.130 &plusmn; 0.0407</td><td>73.7 &plusmn; 46.01</td></tr>
+<tr><td class='l'>L3 (descriptor)</td><td>2,867 &plusmn; 279.1</td><td>1,642 &plusmn; 261.8</td><td>8.72 &plusmn; 0.270</td><td>3.00 &plusmn; 0.194</td><td>49.8 &plusmn; 1.33</td><td>0.125 &plusmn; 0.0173</td><td>80.8 &plusmn; 23.82</td></tr>
+<tr><td class='l'>L4 (frames)</td><td>3,161 &plusmn; 619.4</td><td>1,553 &plusmn; 118.6</td><td>8.70 &plusmn; 1.526</td><td>2.88 &plusmn; 0.191</td><td>50.8 &plusmn; 1.46</td><td>0.120 &plusmn; 0.0224</td><td>78.9 &plusmn; 38.70</td></tr>
+</table>
+</details>
 <p class="note">Descriptive only; no significance tests.</p>
 
-<h2 id="audio">9&nbsp;· Audio examples</h2>
-<p class="note">The clips labelled <i>real</i> are 200&nbsp;ms, peak-normalised
+<h2 id="audio">7&nbsp;· Audio examples</h2>
+<p class="note">The <i>Real recording</i> clips are 200&nbsp;ms, peak-normalised
 excerpts from the ObjectFolder-Real dataset (Gao et al., CVPR 2023;
 &copy; Stanford Vision and Learning Lab), reproduced here for comparison under
 the ObjectFolder project's
@@ -379,27 +713,27 @@ license. The dataset itself is not redistributed; obtain it
 from the ObjectFolder project page. All other clips are model outputs.</p>
 <figure>
 <img src="img/fig_qualitative_main.png" alt="Spectrograms: real vs L1 vs L4 for one seen and one unseen object">
-<figcaption><b>Figure C.</b> One seen object (top) and one unseen object
-(bottom), each the median example by per-clip log-spectral distance of the
-L4 generation (first run): real recording,
-identity-only generation (L1), force-frame generation (L4); shared dB scale.
+<figcaption><b>Figure B.</b> One seen object (top) and one unseen object
+(bottom), one strike each: the strike with the median per-clip log-spectral distance of the
+L4 generation (first run). Columns: real recording,
+DDSP at L1 (identity) and L4 (frames); shared dB scale.
 On the unseen object neither model reproduces the real recording's modal-line
 structure: L1 sustains spectral lines the object does not have, and L4
 follows the decay envelope with a broadband texture.</figcaption>
 </figure>
-<p><b>Listen to the exact examples in Figure C, plus the best and worst
+<p><b>Listen to the exact examples in Figure B, plus the best and worst
 cases.</b> Rows are ranked by per-clip log-spectral distance (LSD) of the L4
 generation (first run) against the real recording, over every test clip of
-the split; the median rows are the two examples shown in Figure C. Each clip
+the split; the median rows are the two examples shown in Figure B. Each clip
 is peak-normalised for listening, whereas the spectrograms share one dB
-scale, so level differences visible in the figure are not audible:</p>
+scale, so level differences in the figure are absent from the audio:</p>
 <table class="audio">
-<tr><th></th><th>Real recording</th><th>L1: identity only</th><th>L4: + force frames</th></tr>
+<tr><th></th><th>Real recording</th><th>L1 (identity)</th><th>L4 (frames)</th></tr>
 <tr><td class="l">Seen — best (LSD 2.87 dB)</td>
 <td><audio controls preload="none" src="audio/figc_seen_best_real.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_seen_best_L1.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_seen_best_L4.wav"></audio></td></tr>
-<tr><td class="l">Seen — median (LSD 7.16 dB), Figure C top</td>
+<tr><td class="l">Seen — median (LSD 7.16 dB), Figure B top</td>
 <td><audio controls preload="none" src="audio/figc_seen_real.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_seen_L1.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_seen_L4.wav"></audio></td></tr>
@@ -411,7 +745,7 @@ scale, so level differences visible in the figure are not audible:</p>
 <td><audio controls preload="none" src="audio/figc_unseen_best_real.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_unseen_best_L1.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_unseen_best_L4.wav"></audio></td></tr>
-<tr><td class="l">Unseen — median (LSD 10.34 dB), Figure C bottom</td>
+<tr><td class="l">Unseen — median (LSD 10.34 dB), Figure B bottom</td>
 <td><audio controls preload="none" src="audio/figc_unseen_real.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_unseen_L1.wav"></audio></td>
 <td><audio controls preload="none" src="audio/figc_unseen_L4.wav"></audio></td></tr>
@@ -421,18 +755,13 @@ scale, so level differences visible in the figure are not audible:</p>
 <td><audio controls preload="none" src="audio/figc_unseen_worst_L4.wav"></audio></td></tr>
 </table>
 <h3>Further examples: system comparison per strike</h3>
-<p class="note">Three further strikes per split. Each row plays the same
-strike through the learned systems and the modal baseline of the reference
-table: real recording, DDSP (L4), then — for unseen objects only — DDSP with
-the envelope loss, then modal synthesis and DDSP with pretraining.
-The envelope-loss column is shown for unseen objects, the split on which
-the variant was trained (Sec.&nbsp;5).</p>
-<p><b>Seen objects (within).</b></p>
+<p class="note">Three further strikes each from seen and unseen objects (validation set). Each row gives one strike as the real recording and as generated by DDSP (L4), DDSP with the envelope loss (unseen objects only), modal synthesis (Section&nbsp;4) and DDSP with pretraining.</p>
+<p><b>Seen objects.</b></p>
 <table class='audio'><tr><th></th><th>Real recording</th><th>DDSP (L4)</th><th>Modal synthesis (SAMPLE)</th><th>DDSP + pretraining</th></tr><tr><td class='l'>Example 1</td><td><audio controls preload='none' src='audio/w1_real.wav'></audio></td><td><audio controls preload='none' src='audio/w1_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/w1_modal.wav'></audio></td><td><audio controls preload='none' src='audio/w1_pretrain.wav'></audio></td></tr>
 <tr><td class='l'>Example 2</td><td><audio controls preload='none' src='audio/w2_real.wav'></audio></td><td><audio controls preload='none' src='audio/w2_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/w2_modal.wav'></audio></td><td><audio controls preload='none' src='audio/w2_pretrain.wav'></audio></td></tr>
 <tr><td class='l'>Example 3</td><td><audio controls preload='none' src='audio/w3_real.wav'></audio></td><td><audio controls preload='none' src='audio/w3_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/w3_modal.wav'></audio></td><td><audio controls preload='none' src='audio/w3_pretrain.wav'></audio></td></tr>
 </table>
-<p><b>Unseen objects (held-out).</b></p>
+<p><b>Unseen objects.</b></p>
 <table class='audio'><tr><th></th><th>Real recording</th><th>DDSP (L4)</th><th>DDSP + envelope loss</th><th>Modal synthesis (SAMPLE)</th><th>DDSP + pretraining</th></tr><tr><td class='l'>Example 1</td><td><audio controls preload='none' src='audio/ex1_real.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_envloss.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_modal.wav'></audio></td><td><audio controls preload='none' src='audio/ex1_pretrain.wav'></audio></td></tr>
 <tr><td class='l'>Example 2</td><td><audio controls preload='none' src='audio/ex2_real.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_envloss.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_modal.wav'></audio></td><td><audio controls preload='none' src='audio/ex2_pretrain.wav'></audio></td></tr>
 <tr><td class='l'>Example 3</td><td><audio controls preload='none' src='audio/ex3_real.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_ddsp.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_envloss.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_modal.wav'></audio></td><td><audio controls preload='none' src='audio/ex3_pretrain.wav'></audio></td></tr>
@@ -440,14 +769,8 @@ the variant was trained (Sec.&nbsp;5).</p>
 
 <h2 id="code">Code and data</h2>
 <p class="foot">Code:
-<a href="https://github.com/BZFLL/force-conditioned-impact-sound">github.com/BZFLL/force-conditioned-impact-sound</a>
-— the two generators, the training code of the four-level grids and the
-descriptor ladder, the evaluation code and run configurations, and the
-result files behind Table 1, the reference systems, and the validation-split
-training-variant comparisons. ObjectFolder-Real is available from its authors'
-<a href="https://objectfolder.stanford.edu/">project page</a>; the real
-recordings played on this page are from ObjectFolder-Real (Gao et al.), with
-attribution and licence stated in Sec.&nbsp;9.</p>
+<a href="https://github.com/BZFLL/force-conditioned-impact-sound">github.com/BZFLL/force-conditioned-impact-sound</a>. It holds the two generators, the evaluation code and run configurations. For the object-level FAD of L1&ndash;L4 (Section&nbsp;1, the paper's Table&nbsp;1), it holds both the code and the result files. The same holds for the FAD comparisons of the alternative descriptors, L4&prime;, the frame shuffle and the template pulse (Section&nbsp;3), except L3 − L4 and L3 − L2. It also holds the result files of frames at 2&nbsp;ms and 6.7&nbsp;ms, and the validation results of pretraining (both splits) and of the envelope loss (unseen objects). ObjectFolder-Real is available from its authors'
+<a href="https://objectfolder.stanford.edu/">project page</a>.</p>
 </main>
 </body>
 </html>
