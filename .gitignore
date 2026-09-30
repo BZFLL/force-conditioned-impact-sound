@@ -1,6 +1,9 @@
 experiments/**
 !experiments/**/
 !experiments/**/*config.json
+experiments_template/**
+!experiments_template/**/
+!experiments_template/**/*config.json
 cache/
 data/
 logs/
@@ -11,9 +14,12 @@ stats/*.pt
 !stats/pca6_basis_heldout.pt
 !stats/wav_scale_within.pt
 !stats/wav_scale_heldout.pt
+!stats/template_pulse_within.pt
+!stats/template_pulse_heldout.pt
 stats/*.npy
 __pycache__/
 .pytest_cache/
 *.pyc
 .DS_Store
 .venv/
+docs/*ledger*

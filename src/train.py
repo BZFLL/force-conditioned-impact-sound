@@ -1,12 +1,20 @@
 """Training script for the force-conditioned impact-sound models.
 
 Trains either the CVAE backbone (mel-spectrogram target, model.py) or the
-DDSP backbone (waveform target, model_ddsp.py) at one of four
+DDSP backbone (waveform target, model_ddsp.py) at one of five
 force-conditioning levels, selected with --ablation:
   1  identity embedding only
   2  + peak-force scalar
   3  + 6-D force descriptor
   4  + time-resolved force frames (the 200 ms force window)
+  5  identity + the force window with NO summary: L4' (post-hoc frames-only
+     control; on the DDSP the per-frame curve, on the CVAE the global 32-D code)
+With --force_input template_peak (DDSP level 4 only) the per-frame route
+receives the split's template pulse (stats/template_pulse_<split>.pt,
+fit_template_pulse.py) scaled to each strike's window peak instead of the
+measured window: the template-pulse control. Its force-curve z-score comes
+from the cached measured-window statistics (stats/force_curve_stats_<split>.pt),
+which are not recomputed from the template dataset.
 on either the within split (seen objects, per-object 70/15/15) or the
 held-out split (unseen objects, material-stratified), loaded from
 splits/splits_<split>.json (both files ship in splits/; make_splits.py
@@ -72,9 +80,12 @@ STATS_DIR = PROJECT_ROOT / "stats"
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train the force-conditioned generators (CVAE or DDSP)")
-    parser.add_argument("--ablation", type=int, default=3, choices=[1, 2, 3, 4],
+    parser.add_argument("--ablation", type=int, default=3, choices=[1, 2, 3, 4, 5],
                         help="Force-conditioning level: 1=identity only, 2=+peak-force "
-                             "scalar, 3=+6-D descriptor, 4=+time-resolved force frames")
+                             "scalar, 3=+6-D descriptor, 4=+time-resolved force frames; "
+                             "5=identity + force frames with NO summary (L4', post-hoc "
+                             "frames-only control; on the CVAE the force route is "
+                             "L4's global 32-D code of the window)")
     parser.add_argument("--feature_set", type=str, default="v1",
                         choices=["v1", "impulse", "v2A", "v2AB", "pca6"],
                         help="Force-feature set: v1=original 6-D descriptor; "
@@ -122,6 +133,15 @@ def parse_args():
                         help="Override split JSON path (default: "
                              "<project>/splits/splits_<split>.json)")
     parser.add_argument("--save_dir", type=str, default=None)
+    parser.add_argument("--force_input", type=str, default="measured",
+                        choices=["measured", "template_peak"],
+                        help="What the per-frame force route receives: the "
+                             "measured 200 ms window, or the split's template "
+                             "pulse scaled to the strike's window peak "
+                             "(template-pulse control, DDSP level 4 only)")
+    parser.add_argument("--template_path", type=str, default=None,
+                        help="[template_peak] template file (default: "
+                             "<project>/stats/template_pulse_<split>.pt)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--env_lambda", type=float, default=0.0,
                         help="[ddsp] Weight of the envelope-L1 auxiliary loss "
@@ -476,6 +496,29 @@ def main():
     args.force_feature_dim = (6 if args.feature_set in ("v1", "pca6")
                               else len(FEATURE_SETS_V2[args.feature_set]))
 
+    # With --force_input template_peak, pin the measured-window force-curve
+    # statistics so the cache is not recomputed from the template dataset.
+    if args.force_input != "measured":
+        if args.backbone != "ddsp" or args.ablation != 4:
+            raise SystemExit("--force_input template_peak is defined for "
+                             "--backbone ddsp --ablation 4 only")
+        if args.synthetic:
+            raise SystemExit("--force_input template_peak is defined for "
+                             "ObjectFolder-Real only, not with --synthetic")
+        if args.template_path is None:
+            args.template_path = str(STATS_DIR / f"template_pulse_{args.split}.pt")
+        if not os.path.exists(args.template_path):
+            raise FileNotFoundError(
+                f"Template not found: {args.template_path}\n"
+                f"Run first:  python3 {Path(__file__).parent / 'fit_template_pulse.py'} "
+                f"--split {args.split}")
+        fc_cache = STATS_DIR / f"force_curve_stats_{args.split}.pt"
+        assert fc_cache.exists(), (
+            f"{fc_cache} must exist: with --force_input {args.force_input} the "
+            f"force-curve z-score comes from the cached measured-window statistics")
+        print(f"Template: {args.template_path}")
+        print(f"Force curve stats cache: {fc_cache}")
+
     # Save config
     with open(os.path.join(args.save_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=2)
@@ -509,7 +552,9 @@ def main():
             data_root=args.data_root,
             return_waveform=(args.backbone == "ddsp"),
             feature_set=args.feature_set,
-            pca_basis=pca_basis)
+            pca_basis=pca_basis,
+            force_input=args.force_input,
+            template_path=args.template_path)
         train_idx, val_idx, test_idx = load_split_indices(dataset, args.split_file)
 
     # Global mel z-score stats from the train split
@@ -576,6 +621,17 @@ def main():
             force_feature_dim=args.force_feature_dim,
         ).to(device)
         loss_fn = MRSTFTLoss()
+        if args.force_input != "measured":
+            # get_force_curve_stats recomputes from the dataset it is given
+            # when the cache does not match; here that would be template
+            # windows, so the cached measured-window statistics must match
+            # this split.
+            cached = torch.load(STATS_DIR / f"force_curve_stats_{args.split}.pt")
+            assert (cached.get('n_train') == len(train_idx)
+                    and cached.get('force_frames') == model.force_frames), (
+                "cached force-curve stats do not match this split "
+                f"(n_train {cached.get('n_train')} vs {len(train_idx)}, "
+                f"force_frames {cached.get('force_frames')} vs {model.force_frames})")
         # per-channel force-curve z-score stats (train split) into the model
         fc_mean, fc_std = get_force_curve_stats(
             dataset, train_idx, stats_tag, model.force_frames, model.w)

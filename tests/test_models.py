@@ -58,6 +58,51 @@ def test_ddsp_forward_returns_a_waveform_of_the_requested_length(level, tmp_path
     assert aux["band_amps"].shape == (BATCH, model.n_frames, DDSP_SMALL["n_bands"])
 
 
+def test_cvae_level5_is_identity_plus_frames_without_summary():
+    """Level 5 on the CVAE: identity only on the static route, L4's global
+    32-D code of the force window on the force route, and no descriptor —
+    which must hold even when train.py passes force_features anyway."""
+    m5 = ConditionalMelVAE(n_mels=N_MELS, n_frames=N_FRAMES,
+                           n_objects=N_OBJECTS, ablation_level=5)
+    assert m5.cond_dim == 16 + 32
+    args = cvae_inputs()
+    obj_id, fw = args["obj_id"], args["force_waveform"]
+    c_with = m5._get_conditioning(obj_id, args["force_features"], fw)
+    c_without = m5._get_conditioning(obj_id, None, fw)
+    assert c_with.shape == (BATCH, 48)
+    assert torch.equal(c_with, c_without)     # the descriptor must not leak in
+    with pytest.raises(ValueError):
+        m5._get_conditioning(obj_id, None, None)
+
+
+def test_ddsp_level5_is_identity_plus_frames_without_summary(tmp_path):
+    """Level 5 (post-hoc frames-only control): the static route is L1's
+    (identity only), the per-frame route is L4's; it runs without a
+    descriptor and its parameter count sits strictly between L1 and L4."""
+    def count(model):
+        return sum(p.numel() for p in model.parameters())
+
+    m5 = ForceConditionedFilterbankDDSP(
+        n_objects=N_OBJECTS, ablation_level=5, cache_dir=tmp_path, **DDSP_SMALL
+    )
+    wav, _ = m5(
+        obj_id=torch.randint(0, N_OBJECTS, (BATCH,)),
+        force_features=None,
+        force_waveform=torch.randn(BATCH, DDSP_SMALL["force_waveform_samples"]),
+    )
+    assert wav.shape == (BATCH, DDSP_SMALL["signal_samples"])
+    assert torch.isfinite(wav).all()
+    with pytest.raises(ValueError):
+        m5(obj_id=torch.randint(0, N_OBJECTS, (BATCH,)), force_waveform=None)
+    m1 = ForceConditionedFilterbankDDSP(
+        n_objects=N_OBJECTS, ablation_level=1, cache_dir=tmp_path, **DDSP_SMALL
+    )
+    m4 = ForceConditionedFilterbankDDSP(
+        n_objects=N_OBJECTS, ablation_level=4, cache_dir=tmp_path, **DDSP_SMALL
+    )
+    assert count(m1) < count(m5) < count(m4)
+
+
 def test_conditioning_adds_less_than_three_percent_of_parameters(tmp_path):
     def count(model):
         return sum(p.numel() for p in model.parameters())

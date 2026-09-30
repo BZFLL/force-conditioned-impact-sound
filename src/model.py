@@ -91,6 +91,19 @@ class ConditionalMelVAE(nn.Module):
                 input_samples=force_waveform_samples, out_dim=32
             )
             self.cond_dim = obj_embed_dim + force_feature_dim + 32  # 54 when dim=6
+        elif ablation_level == 5:
+            # Frames-only control: static route is L1's (identity only, no peak,
+            # no descriptor), force route is L4's 32-D code.
+            # cond_dim must NOT depend on force_feature_dim: there is no descriptor here.
+            # The ForceWaveformEncoder(...) call is deliberately duplicated inside this
+            # branch: hoisting it out of the if/elif chain would make levels 1-3 consume
+            # ~25,312 extra RNG draws at construction and silently change every
+            # initialised weight, so a retrained L1-L3 cell would no longer reproduce
+            # its value in results/results_cvae_<split>_test.json.
+            self.force_wav_encoder = ForceWaveformEncoder(
+                input_samples=force_waveform_samples, out_dim=32
+            )
+            self.cond_dim = obj_embed_dim + 32               # 48
         else:
             raise ValueError(f"Unknown ablation_level: {ablation_level}")
 
@@ -157,15 +170,20 @@ class ConditionalMelVAE(nn.Module):
         """Build conditioning vector based on ablation level."""
         cond = self.obj_embed(obj_id)  # (B, obj_embed_dim)
 
-        if self.ablation_level >= 2 and force_features is not None:
+        # Levels 2-4 append the summary; level 5 deliberately does not (train.py
+        # passes force_feat at every level, so the level must gate it, not the caller).
+        if self.ablation_level in (2, 3, 4) and force_features is not None:
             if self.ablation_level == 2:
                 # Scalar peak only
                 cond = torch.cat([cond, force_features[:, 0:1]], dim=1)
-            elif self.ablation_level >= 3:
+            else:
                 # Full 6-dim features
                 cond = torch.cat([cond, force_features], dim=1)
 
-        if self.ablation_level == 4 and force_waveform is not None:
+        if self.ablation_level in (4, 5):
+            if force_waveform is None:
+                raise ValueError(
+                    f"ablation level {self.ablation_level} needs force_waveform")
             wav_feat = self.force_wav_encoder(force_waveform)
             cond = torch.cat([cond, wav_feat], dim=1)
 

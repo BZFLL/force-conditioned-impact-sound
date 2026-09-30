@@ -305,7 +305,9 @@ class ForceConditionedFilterbankDDSP(nn.Module):
         self.obj_embed = nn.Embedding(n_identity, obj_embed_dim)
 
         # Static conditioning dim, mirroring model.py._get_conditioning.
-        if ablation_level == 1:
+        # Level 5 (post-hoc control): identity + force frames with NO
+        # summary; the static route is L1's, the per-frame route is L4's.
+        if ablation_level in (1, 5):
             static_dim = obj_embed_dim                   # 16
         elif ablation_level == 2:
             static_dim = obj_embed_dim + 1               # 17
@@ -315,8 +317,8 @@ class ForceConditionedFilterbankDDSP(nn.Module):
             raise ValueError(f"Unknown ablation_level: {ablation_level}")
 
         self.cond_mlp = MLP(static_dim, hidden_size, hidden_size, n_layers=3)
-        # L4 force curve has 2 channels ([RMS, max-abs]); GRU input +2.
-        gru_in = hidden_size + (2 if ablation_level == 4 else 0)
+        # L4 and L4' (level 5) force curve has 2 channels ([RMS, max-abs]); GRU input +2.
+        gru_in = hidden_size + (2 if ablation_level in (4, 5) else 0)
         self.gru = nn.GRU(gru_in, hidden_size, batch_first=True)
         self.film = AdaLNFiLM(obj_embed_dim, hidden_size)
 
@@ -344,7 +346,7 @@ class ForceConditionedFilterbankDDSP(nn.Module):
     # conditioning
     def _static_cond(self, obj_emb, force_features):
         """Static conditioning vector (same level semantics as model.py)."""
-        if self.ablation_level == 1:
+        if self.ablation_level in (1, 5):          # 5: frames only, no summary
             return obj_emb
         if force_features is None:
             raise ValueError(f"ablation level {self.ablation_level} needs force_features")
@@ -390,9 +392,9 @@ class ForceConditionedFilterbankDDSP(nn.Module):
         cond = self.cond_mlp(self._static_cond(obj_emb, force_features))
         cond_seq = cond.unsqueeze(1).expand(-1, self.n_frames, -1)
 
-        if self.ablation_level == 4:
+        if self.ablation_level in (4, 5):
             if force_waveform is None:
-                raise ValueError("ablation level 4 needs force_waveform")
+                raise ValueError(f"ablation level {self.ablation_level} needs force_waveform")
             cond_seq = torch.cat([cond_seq, self._force_curve(force_waveform)],
                                  dim=-1)                      # (B, T, H+2)
 

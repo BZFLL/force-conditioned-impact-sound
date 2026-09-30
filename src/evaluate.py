@@ -320,8 +320,8 @@ def generate_waveforms(model, meta, dataset, indices, device,
             # DDSP receives the raw force window (model pools + z-scores internally)
             fw = s["force_waveform"].unsqueeze(0).to(device)
             model.eval()
-            wav, _ = model(ident, ff if meta["ablation"] >= 2 else None,
-                           fw if meta["ablation"] == 4 else None,
+            wav, _ = model(ident, ff if meta["ablation"] in (2, 3, 4) else None,
+                           fw if meta["ablation"] in (4, 5) else None,
                            loop_offsets=torch.zeros(1, dtype=torch.long,
                                                     device=device))
             gen = wav[0].cpu()
@@ -330,8 +330,8 @@ def generate_waveforms(model, meta, dataset, indices, device,
             fwm, fws = fw_stats
             fw = ((s["force_waveform"] - fwm) / fws).unsqueeze(0).to(device)
             mel = model.generate(
-                ident, ff if meta["ablation"] >= 2 else None,
-                fw if meta["ablation"] == 4 else None, n_samples=1)[0]
+                ident, ff if meta["ablation"] in (2, 3, 4) else None,
+                fw if meta["ablation"] in (4, 5) else None, n_samples=1)[0]
             gen = gl_inv(mel)
         # Ground truth onset waveform (the window dataset.py built). For CVAE
         # GT goes through the same GL pipeline, so gen and gt live in the same
@@ -549,7 +549,7 @@ def eval_one_model(ckpt_dir, dataset, split_idx, encoder, device, gl_inv,
     # DDSP L4: if the checkpoint lacks the force_curve buffers, recompute
     # them from the train split so the force curve is z-scored exactly as
     # at train time.
-    if (meta["backbone"] == "ddsp" and meta["ablation"] == 4
+    if (meta["backbone"] == "ddsp" and meta["ablation"] in (4, 5)
             and not meta["force_curve_from_checkpoint"]):
         fw = torch.stack([dataset[i]["force_waveform"] for i in train_idx])
         curves = model.pool_force_curve(fw, model.force_frames, model.w)

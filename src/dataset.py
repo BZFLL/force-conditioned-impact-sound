@@ -21,6 +21,14 @@ Force feature sets (feature_set argument):
   pca6    6-D: scores of the pooled force curve (per-frame RMS and max|F|)
           on a train-split PCA basis (fit by fit_pca_basis.py).
 
+Force input (force_input argument):
+  measured       the strike's measured 200 ms force window (default).
+  template_peak  the split's template pulse (template_path, written by
+                 fit_template_pulse.py) scaled to the strike's own window
+                 peak, max|measured window|. Only force_waveform changes; the
+                 descriptor, the mel and the mic waveform still come from the
+                 measured data. The template-pulse control.
+
 Normalisation: mels are log1p only; a global per-mel-bin z-score with
 train-split statistics (compute_mel_stats) is applied in __getitem__ once
 set_mel_stats() has been called. Force descriptors, force windows and target
@@ -259,7 +267,23 @@ class ObjectFolderRealDataset(Dataset):
         return_waveform: bool = False,
         feature_set: str = "v1",
         pca_basis: str = None,
+        force_input: str = "measured",
+        template_path: str = None,
     ):
+        assert force_input in ("measured", "template_peak"), \
+            f"unknown force_input {force_input!r}"
+        self._force_input = force_input
+        self._template = None
+        if force_input == "template_peak":
+            assert template_path and os.path.exists(template_path), \
+                f"force_input=template_peak needs an existing template_path, " \
+                f"got {template_path!r}"
+            t = torch.load(template_path, map_location="cpu", weights_only=False)
+            self._template = t["mean_pulse"].numpy().astype(np.float64)
+            n_window = int(force_window_ms / 1000 * sr)
+            assert len(self._template) == n_window, (
+                f"{template_path} holds a {len(self._template)}-sample template; "
+                f"the force window has {n_window} samples")
         self.data_root = data_root
         self.return_waveform = return_waveform
         assert feature_set in ("v1", "pca6") or feature_set in FEATURE_SETS_V2, \
@@ -443,6 +467,15 @@ class ObjectFolderRealDataset(Dataset):
             force_vec = torch.tensor(
                 [f2[k] for k in FEATURE_SETS_V2[self.feature_set]],
                 dtype=torch.float32)
+
+        # Template-pulse control: the per-frame route receives the split's
+        # template pulse scaled to this strike's window peak instead of the
+        # measured window. The peak is read from the float32 measured window,
+        # the values fit_template_pulse.py averaged. The descriptor above and
+        # the mel and waveform below stay measured.
+        if self._force_input == "template_peak":
+            peak = float(force_waveform.abs().max())
+            force_waveform = torch.tensor(self._template * peak, dtype=torch.float32)
 
         # Onset mel from the mic, anchored to the force peak like the force
         # window above.
