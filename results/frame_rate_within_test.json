@@ -1,0 +1,256 @@
+{
+  "experiment": "frame_rate",
+  "backbone": "ddsp",
+  "split": "within",
+  "eval_split": "test",
+  "metric": "object_first_VGGish_FAD",
+  "device": "mps",
+  "block_samples": [
+    96,
+    320
+  ],
+  "levels": {
+    "L1": {
+      "n_seeds": 5,
+      "scoring_seconds": 150.2,
+      "object_first_fad_mean": 1.5835857141762546,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.6750129963308147
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.5976169420629314
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.607947398260193
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.5281418369561006
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.5092093972712328
+        }
+      ]
+    },
+    "L4": {
+      "n_seeds": 5,
+      "scoring_seconds": 151.2,
+      "object_first_fad_mean": 1.3985865802751203,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.5083234131250072
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.5105711353438032
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.6326636065057176
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.204443093842583
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.1369316525584903
+        }
+      ]
+    },
+    "L3": {
+      "n_seeds": 5,
+      "scoring_seconds": 150.1,
+      "object_first_fad_mean": 1.5954132064665014,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.507456087271779
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.653481809601528
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.608605554899832
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.6236810986215813
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.5838414819377866
+        }
+      ]
+    },
+    "frames_2ms": {
+      "n_seeds": 5,
+      "scoring_seconds": 150.9,
+      "object_first_fad_mean": 1.6042435526986103,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.64182191046106
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.5195089001800326
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.6353019719240536
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.6392186184793363
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.5853663624485657
+        }
+      ]
+    },
+    "frames_6.7ms": {
+      "n_seeds": 5,
+      "scoring_seconds": 150.8,
+      "object_first_fad_mean": 1.595094093166251,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.506018615947042
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.506796704012154
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.603123021343159
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.7172160852967577
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.642316039232142
+        }
+      ]
+    }
+  },
+  "l4_minus_l3_reference": {
+    "comparison": "L4-L3",
+    "n_objects": 100,
+    "delta": -0.19682662619138122,
+    "ci95": [
+      -0.2434954352263165,
+      -0.15138029453255744
+    ],
+    "cohens_d_paired": -0.800840946845623,
+    "p_two_sided": 0.0
+  },
+  "family_holm": [
+    {
+      "comparison": "frames_2ms-L4",
+      "n_objects": 100,
+      "delta": 0.20565697242348954,
+      "ci95": [
+        0.15721013107919538,
+        0.2542486422383103
+      ],
+      "cohens_d_paired": 0.7963080640900634,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "frames_2ms-L3",
+      "n_objects": 100,
+      "delta": 0.00883034623210832,
+      "ci95": [
+        -0.024115044559332006,
+        0.044103028294008736
+      ],
+      "cohens_d_paired": 0.05048759828693487,
+      "p_two_sided": 0.627,
+      "p_holm": 1.0,
+      "detected": false
+    },
+    {
+      "comparison": "frames_6.7ms-L4",
+      "n_objects": 100,
+      "delta": 0.1965075128911306,
+      "ci95": [
+        0.1459802360562095,
+        0.2490161613311795
+      ],
+      "cohens_d_paired": 0.7369636387750202,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "frames_6.7ms-L3",
+      "n_objects": 100,
+      "delta": -0.0003191133002505553,
+      "ci95": [
+        -0.0395867013618494,
+        0.03775148438128891
+      ],
+      "cohens_d_paired": -0.0015616567281837566,
+      "p_two_sided": 0.993,
+      "p_holm": 1.0,
+      "detected": false
+    }
+  ],
+  "secondary_no_holm": [
+    {
+      "comparison": "frames_2ms-L1",
+      "n_objects": 100,
+      "delta": 0.020657838522355188,
+      "ci95": [
+        -0.036628469361445065,
+        0.0773647533367371
+      ],
+      "cohens_d_paired": 0.07055122296686542,
+      "p_two_sided": 0.47,
+      "detected_uncorrected": false
+    },
+    {
+      "comparison": "frames_6.7ms-L1",
+      "n_objects": 100,
+      "delta": 0.011508378989996319,
+      "ci95": [
+        -0.048255746545300356,
+        0.06968340851407456
+      ],
+      "cohens_d_paired": 0.03786037270717965,
+      "p_two_sided": 0.693,
+      "detected_uncorrected": false
+    },
+    {
+      "comparison": "frames_2ms-frames_6.7ms",
+      "n_objects": 100,
+      "delta": 0.009149459532358876,
+      "ci95": [
+        -0.029463528822325738,
+        0.046551858712319004
+      ],
+      "cohens_d_paired": 0.04784465703018758,
+      "p_two_sided": 0.651,
+      "detected_uncorrected": false
+    }
+  ],
+  "reading": {
+    "frames_2ms": "At 2 ms the time course adds nothing detectable over the descriptor (+0.009 [-0.024, +0.044]); the L4 gain lies between 0.67 ms and 2 ms (against frames at 0.67 ms: +0.206 [+0.157, +0.254], seen objects).",
+    "frames_6.7ms": "At 6.7 ms the time course adds nothing detectable over the descriptor (-0.000 [-0.040, +0.038]); the L4 gain lies between 0.67 ms and 6.7 ms (against frames at 0.67 ms: +0.197 [+0.146, +0.249], seen objects)."
+  }
+}

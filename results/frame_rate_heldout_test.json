@@ -1,0 +1,256 @@
+{
+  "experiment": "frame_rate",
+  "backbone": "ddsp",
+  "split": "heldout",
+  "eval_split": "test",
+  "metric": "object_first_VGGish_FAD",
+  "device": "mps",
+  "block_samples": [
+    96,
+    320
+  ],
+  "levels": {
+    "L1": {
+      "n_seeds": 5,
+      "scoring_seconds": 94.2,
+      "object_first_fad_mean": 2.2673607331249905,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 2.2123826373410833
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 2.3472830459736986
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 2.396737440482509
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 2.083286529016696
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 2.2971140128109644
+        }
+      ]
+    },
+    "L4": {
+      "n_seeds": 5,
+      "scoring_seconds": 94.9,
+      "object_first_fad_mean": 1.8151809656581,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.752647268745215
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.807666741751644
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.8777719610512709
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.80084532934485
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.8369735273975198
+        }
+      ]
+    },
+    "L3": {
+      "n_seeds": 5,
+      "scoring_seconds": 93.9,
+      "object_first_fad_mean": 1.8791399485198947,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.9157021750808458
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.7597663371181718
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.9468014964770357
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.81919796898352
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.9542317649399015
+        }
+      ]
+    },
+    "frames_2ms": {
+      "n_seeds": 5,
+      "scoring_seconds": 95.5,
+      "object_first_fad_mean": 1.9912827591378923,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.8321601366240128
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.9154685581963458
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 1.9920365146004617
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 2.0429426855022945
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 2.1738059007663457
+        }
+      ]
+    },
+    "frames_6.7ms": {
+      "n_seeds": 5,
+      "scoring_seconds": 94.6,
+      "object_first_fad_mean": 1.8894840240942192,
+      "per_seed": [
+        {
+          "seed": 42,
+          "object_first_fad": 1.784008329719749
+        },
+        {
+          "seed": 43,
+          "object_first_fad": 1.952345157946545
+        },
+        {
+          "seed": 44,
+          "object_first_fad": 2.0165832951930676
+        },
+        {
+          "seed": 45,
+          "object_first_fad": 1.9028350882330847
+        },
+        {
+          "seed": 46,
+          "object_first_fad": 1.79164824937865
+        }
+      ]
+    }
+  },
+  "l4_minus_l3_reference": {
+    "comparison": "L4-L3",
+    "n_objects": 17,
+    "delta": -0.06395898286179484,
+    "ci95": [
+      -0.15484242166779036,
+      0.014057685949731278
+    ],
+    "cohens_d_paired": -0.3513124508596876,
+    "p_two_sided": 0.129
+  },
+  "family_holm": [
+    {
+      "comparison": "frames_2ms-L4",
+      "n_objects": 17,
+      "delta": 0.17610179347979216,
+      "ci95": [
+        0.10697077659961025,
+        0.2513861391344213
+      ],
+      "cohens_d_paired": 1.141589159590143,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "frames_2ms-L3",
+      "n_objects": 17,
+      "delta": 0.1121428106179973,
+      "ci95": [
+        0.06031918141953243,
+        0.16580046965456022
+      ],
+      "cohens_d_paired": 1.0043262521028204,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "frames_6.7ms-L4",
+      "n_objects": 17,
+      "delta": 0.07430305843611927,
+      "ci95": [
+        -0.017304078976183714,
+        0.16164282452337397
+      ],
+      "cohens_d_paired": 0.3908468492653928,
+      "p_two_sided": 0.104,
+      "p_holm": 0.208,
+      "detected": false
+    },
+    {
+      "comparison": "frames_6.7ms-L3",
+      "n_objects": 17,
+      "delta": 0.01034407557432444,
+      "ci95": [
+        -0.04469565535093793,
+        0.06334804386864623
+      ],
+      "cohens_d_paired": 0.08777333151877281,
+      "p_two_sided": 0.697,
+      "p_holm": 0.697,
+      "detected": false
+    }
+  ],
+  "secondary_no_holm": [
+    {
+      "comparison": "frames_2ms-L1",
+      "n_objects": 17,
+      "delta": -0.2760779739870981,
+      "ci95": [
+        -0.4015961592886362,
+        -0.14362748417537288
+      ],
+      "cohens_d_paired": -0.9957721846395369,
+      "p_two_sided": 0.0,
+      "detected_uncorrected": true
+    },
+    {
+      "comparison": "frames_6.7ms-L1",
+      "n_objects": 17,
+      "delta": -0.377876709030771,
+      "ci95": [
+        -0.5097982961771333,
+        -0.2527877908980689
+      ],
+      "cohens_d_paired": -1.3592946882017074,
+      "p_two_sided": 0.0,
+      "detected_uncorrected": true
+    },
+    {
+      "comparison": "frames_2ms-frames_6.7ms",
+      "n_objects": 17,
+      "delta": 0.10179873504367287,
+      "ci95": [
+        0.03811411420656165,
+        0.16558609334848176
+      ],
+      "cohens_d_paired": 0.7451692541220577,
+      "p_two_sided": 0.002,
+      "detected_uncorrected": true
+    }
+  ],
+  "reading": {
+    "frames_2ms": "At 2 ms the coarse time course costs +0.176 [+0.107, +0.251] against frames at 0.67 ms on unseen objects and is worse than the descriptor alone (+0.112 [+0.060, +0.166]).",
+    "frames_6.7ms": "On unseen objects neither 6.7 ms - L4 (+0.074 [-0.017, +0.162]) nor 6.7 ms - L3 (+0.010 [-0.045, +0.063]) is detected."
+  }
+}

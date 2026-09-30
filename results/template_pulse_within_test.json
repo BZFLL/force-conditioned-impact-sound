@@ -1,0 +1,233 @@
+{
+  "experiment": "template_pulse",
+  "backbone": "ddsp",
+  "split": "within",
+  "eval_split": "test",
+  "metric": "object_first_VGGish_FAD",
+  "device": "mps",
+  "template": {
+    "file": "stats/template_pulse_within.pt",
+    "n_train": 2572,
+    "peak_index": 240,
+    "n_peak_mismatch": 0
+  },
+  "levels": {
+    "L1": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_1_within_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.6750129963308147
+        },
+        {
+          "ckpt": "experiments/ablation_1_within_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.5976169420629314
+        },
+        {
+          "ckpt": "experiments/ablation_1_within_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.607947398260193
+        },
+        {
+          "ckpt": "experiments/ablation_1_within_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.5281418369561006
+        },
+        {
+          "ckpt": "experiments/ablation_1_within_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.5092093972712328
+        }
+      ],
+      "scoring_seconds": 160.7,
+      "object_first_fad_mean": 1.5835857141762546
+    },
+    "L4": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_4_within_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.5083234131250072
+        },
+        {
+          "ckpt": "experiments/ablation_4_within_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.5105711353438032
+        },
+        {
+          "ckpt": "experiments/ablation_4_within_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.6326636065057176
+        },
+        {
+          "ckpt": "experiments/ablation_4_within_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.204443093842583
+        },
+        {
+          "ckpt": "experiments/ablation_4_within_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.1369316525584903
+        }
+      ],
+      "scoring_seconds": 161.2,
+      "object_first_fad_mean": 1.3985865802751203
+    },
+    "L3": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_3_within_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.507456087271779
+        },
+        {
+          "ckpt": "experiments/ablation_3_within_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.653481809601528
+        },
+        {
+          "ckpt": "experiments/ablation_3_within_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.608605554899832
+        },
+        {
+          "ckpt": "experiments/ablation_3_within_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.6236810986215813
+        },
+        {
+          "ckpt": "experiments/ablation_3_within_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.5838414819377866
+        }
+      ],
+      "scoring_seconds": 163.5,
+      "object_first_fad_mean": 1.5954132064665014
+    },
+    "L4prime": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_5_within_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.4236684629083378
+        },
+        {
+          "ckpt": "experiments/ablation_5_within_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.4545144223629969
+        },
+        {
+          "ckpt": "experiments/ablation_5_within_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.4910869167865932
+        },
+        {
+          "ckpt": "experiments/ablation_5_within_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.4618702049202619
+        },
+        {
+          "ckpt": "experiments/ablation_5_within_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.4431041266877072
+        }
+      ],
+      "scoring_seconds": 164.3,
+      "object_first_fad_mean": 1.4548488267331794
+    },
+    "template": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments_template/template_4_within_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.540454049554178
+        },
+        {
+          "ckpt": "experiments_template/template_4_within_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.6165656705680298
+        },
+        {
+          "ckpt": "experiments_template/template_4_within_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.6517767096770262
+        },
+        {
+          "ckpt": "experiments_template/template_4_within_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.6991414946009704
+        },
+        {
+          "ckpt": "experiments_template/template_4_within_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.5464563843744386
+        }
+      ],
+      "scoring_seconds": 160.8,
+      "object_first_fad_mean": 1.6108788617549286
+    }
+  },
+  "family_holm": [
+    {
+      "comparison": "template-L4",
+      "n_objects": 100,
+      "delta": 0.2122922814798083,
+      "ci95": [
+        0.16710554880391873,
+        0.25867017608011594
+      ],
+      "cohens_d_paired": 0.8848181717169497,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "template-L3",
+      "n_objects": 100,
+      "delta": 0.015465655288427077,
+      "ci95": [
+        -0.019090107419139902,
+        0.05170005488985167
+      ],
+      "cohens_d_paired": 0.08819697835201129,
+      "p_two_sided": 0.385,
+      "p_holm": 0.746,
+      "detected": false
+    },
+    {
+      "comparison": "template-L1",
+      "n_objects": 100,
+      "delta": 0.02729314757867395,
+      "ci95": [
+        -0.031384752861235994,
+        0.08488666456849528
+      ],
+      "cohens_d_paired": 0.08900182696391168,
+      "p_two_sided": 0.373,
+      "p_holm": 0.746,
+      "detected": false
+    }
+  ],
+  "secondary_no_holm": {
+    "comparison": "template-L4prime",
+    "n_objects": 100,
+    "delta": 0.15603003502174909,
+    "ci95": [
+      0.09786933354700093,
+      0.22318677491366692
+    ],
+    "cohens_d_paired": 0.4749139029068282,
+    "p_two_sided": 0.0,
+    "detected_uncorrected": true
+  },
+  "reading": {
+    "row": 1,
+    "sentence": "Replacing the measured frames by a template pulse scaled to the strike's peak costs +0.212 [+0.167, +0.259] on seen objects, so the generator uses the measured time course beyond its timing and peak."
+  }
+}

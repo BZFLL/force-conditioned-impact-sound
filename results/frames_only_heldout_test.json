@@ -1,0 +1,175 @@
+{
+  "experiment": "frames_only",
+  "split": "heldout",
+  "eval_split": "test",
+  "metric": "object_first_VGGish_FAD",
+  "device": "mps",
+  "levels": {
+    "L1": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_1_heldout_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 2.2123826373410833
+        },
+        {
+          "ckpt": "experiments/ablation_1_heldout_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 2.3472830459736986
+        },
+        {
+          "ckpt": "experiments/ablation_1_heldout_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 2.396737440482509
+        },
+        {
+          "ckpt": "experiments/ablation_1_heldout_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 2.083286529016696
+        },
+        {
+          "ckpt": "experiments/ablation_1_heldout_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 2.2971140128109644
+        }
+      ],
+      "object_first_fad_mean": 2.2673607331249905
+    },
+    "L3": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_3_heldout_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.9157021750808458
+        },
+        {
+          "ckpt": "experiments/ablation_3_heldout_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.7597663371181718
+        },
+        {
+          "ckpt": "experiments/ablation_3_heldout_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.9468014964770357
+        },
+        {
+          "ckpt": "experiments/ablation_3_heldout_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.81919796898352
+        },
+        {
+          "ckpt": "experiments/ablation_3_heldout_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.9542317649399015
+        }
+      ],
+      "object_first_fad_mean": 1.8791399485198947
+    },
+    "L4": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_4_heldout_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.752647268745215
+        },
+        {
+          "ckpt": "experiments/ablation_4_heldout_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.807666741751644
+        },
+        {
+          "ckpt": "experiments/ablation_4_heldout_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.8777719610512709
+        },
+        {
+          "ckpt": "experiments/ablation_4_heldout_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.80084532934485
+        },
+        {
+          "ckpt": "experiments/ablation_4_heldout_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.8369735273975198
+        }
+      ],
+      "object_first_fad_mean": 1.8151809656581
+    },
+    "L4prime": {
+      "n_seeds": 5,
+      "per_seed": [
+        {
+          "ckpt": "experiments/ablation_5_heldout_ddsp_s42",
+          "seed": 42,
+          "object_first_fad": 1.6209728663556968
+        },
+        {
+          "ckpt": "experiments/ablation_5_heldout_ddsp_s43",
+          "seed": 43,
+          "object_first_fad": 1.4530540897737765
+        },
+        {
+          "ckpt": "experiments/ablation_5_heldout_ddsp_s44",
+          "seed": 44,
+          "object_first_fad": 1.5452211376542802
+        },
+        {
+          "ckpt": "experiments/ablation_5_heldout_ddsp_s45",
+          "seed": 45,
+          "object_first_fad": 1.5164887514719265
+        },
+        {
+          "ckpt": "experiments/ablation_5_heldout_ddsp_s46",
+          "seed": 46,
+          "object_first_fad": 1.456843252436995
+        }
+      ],
+      "object_first_fad_mean": 1.518516019538535
+    }
+  },
+  "family_holm": [
+    {
+      "comparison": "L4prime-L4",
+      "n_objects": 17,
+      "delta": -0.29666494611956495,
+      "ci95": [
+        -0.46589571155553133,
+        -0.12722496640202385
+      ],
+      "cohens_d_paired": -0.8510001681622237,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "L4prime-L3",
+      "n_objects": 17,
+      "delta": -0.36062392898135986,
+      "ci95": [
+        -0.5412629574987325,
+        -0.17840234808637634
+      ],
+      "cohens_d_paired": -0.9562852127624799,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    },
+    {
+      "comparison": "L4prime-L1",
+      "n_objects": 17,
+      "delta": -0.7488447135864552,
+      "ci95": [
+        -0.9573390378633005,
+        -0.5505894236699457
+      ],
+      "cohens_d_paired": -1.7473867854781828,
+      "p_two_sided": 0.0,
+      "p_holm": 0.0,
+      "detected": true
+    }
+  ],
+  "reading": "L4prime better than L4: the summary hurts once the frames are present"
+}
